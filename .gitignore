@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Env
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -30,3 +35,4 @@ src/assets/hero.png
 src/assets/iNoWest.png
 src/assets/react.svg
 src/assets/vite.svg
+src/assets/IandNoWest.webp

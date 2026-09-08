@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'mixed-decls', 'if-function'],
+        quietDeps: true,
+      },
+    },
+  },
 })

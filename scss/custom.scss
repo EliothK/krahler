@@ -1,0 +1,109 @@
+@import "../node_modules/bootstrap/scss/functions";
+@import "../node_modules/bootstrap/scss/variables";
+@import "../node_modules/bootstrap/scss/variables-dark";
+@import "../node_modules/bootstrap/scss/maps";
+@import "../node_modules/bootstrap/scss/mixins";
+@import "../node_modules/bootstrap/scss/utilities";
+
+$sizes-percent-5: ();
+@for $i from 1 through 19 {
+    $sizes-percent-5: map-merge($sizes-percent-5, ($i * 5: $i * 5 * 1%));
+}
+
+@each $key in "width", "height", "max-width", "max-height", "min-viewport-width", "viewport-width", "viewport-height", "min-viewport-height"{
+    $utilities: map-merge(
+        $utilities,
+        (
+            $key: map-merge(
+                map-get($utilities, $key),
+                (
+                    values: map-merge(
+                        map-get(map-get($utilities, $key), "values"),
+                        $sizes-percent-5
+                    )
+                )
+            )
+        )
+    );
+}
+
+$all-colors: map-merge-multiple($blues, $indigos, $purples, $pinks, $reds, $oranges, $yellows, $greens, $teals, $cyans);
+
+$all-colors-dark: $all-colors;
+
+// Expose each color as a CSS variable (plus an "-rgb" triplet, needed for the
+// rgba()-based opacity utilities below) so its value can change per theme.
+:root {
+    @each $name, $value in $all-colors {
+        --bs-#{$name}: #{$value};
+        --bs-#{$name}-rgb: #{red($value)}, #{green($value)}, #{blue($value)};
+    }
+}
+
+[data-bs-theme="dark"] {
+    @each $name, $value in $all-colors-dark {
+        --bs-#{$name}: #{$value};
+        --bs-#{$name}-rgb: #{red($value)}, #{green($value)}, #{blue($value)};
+    }
+}
+
+// Text color has no opacity mechanism, so it just references the solid color.
+$all-colors-vars: ();
+// Background/border colors route through rgba() so .bg-opacity-* / .border-opacity-*
+// (which only set the --bs-bg-opacity / --bs-border-opacity variables) have something
+// to multiply against.
+$all-colors-vars-bg: ();
+$all-colors-vars-border: ();
+@each $name, $value in $all-colors {
+    $all-colors-vars: map-merge($all-colors-vars, ($name: var(--bs-#{$name})));
+    $all-colors-vars-bg: map-merge($all-colors-vars-bg, ($name: rgba(var(--bs-#{$name}-rgb), var(--bs-bg-opacity))));
+    $all-colors-vars-border: map-merge($all-colors-vars-border, ($name: rgba(var(--bs-#{$name}-rgb), var(--bs-border-opacity))));
+}
+
+$opacity-percent-5: ();
+@for $i from 0 through 20 {
+    $opacity-percent-5: map-merge($opacity-percent-5, ($i * 5: $i * 5 * 0.01));
+}
+
+@each $key in "bg-opacity", "border-opacity" {
+    $utilities: map-merge(
+        $utilities,
+        (
+            $key: map-merge(
+                map-get($utilities, $key),
+                (
+                    values: map-merge(
+                        map-get(map-get($utilities, $key), "values"),
+                        $opacity-percent-5
+                    )
+                )
+            )
+        )
+    );
+}
+
+$color-utility-values: (
+    "color": $all-colors-vars,
+    "background-color": $all-colors-vars-bg,
+    "border-color": $all-colors-vars-border,
+);
+
+@each $key, $color-values in $color-utility-values {
+    $utilities: map-merge(
+        $utilities,
+        (
+            $key: map-merge(
+                map-get($utilities, $key),
+                (
+                    values: map-merge(
+                        map-get(map-get($utilities, $key), "values"),
+                        $color-values
+                    )
+                )
+            )
+        )
+    );
+}
+
+@import "../node_modules/bootstrap/scss/bootstrap";
+@import "./site";
