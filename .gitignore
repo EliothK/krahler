@@ -27,12 +27,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Assets
-public/favicon.svg
-public/icons.svg
-src/assets/hero.png
-src/assets/iNoWest.png
-src/assets/react.svg
-src/assets/vite.svg
-src/assets/IandNoWest.webp
