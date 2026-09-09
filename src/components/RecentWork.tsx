@@ -84,7 +84,7 @@ export default function RecentWork() {
                             </span>
                         ) : null}
                         <span className="work-meta">
-                            {r.language ? `${r.language} - ` : ""};
+                            {r.language ? `${r.language} - ` : ""}
                         </span>
                         {r.description ? (
                             <p className="work-desc">{r.description}</p>

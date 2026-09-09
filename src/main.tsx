@@ -3,6 +3,11 @@ import { createRoot } from "react-dom/client";
 import "../scss/custom.scss";
 import App from "./App.tsx";
 
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-mono/400.css";
+
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
         <App />

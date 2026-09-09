@@ -55,7 +55,7 @@ async function main() {
 
         let counts = {};
         try{
-            counts = countPushes( await gh(`/users/${USER}/events/public?per_page-100`),);
+            counts = countPushes( await gh(`/users/${USER}/events/public?per_page=100`),);
         } catch (err) {
             console.warn(`[activity] commit counts unavailable: ${err.message}`);
         }
