@@ -18,3 +18,5 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Build container image
+        run: docker build -t portfolio:${{ github.sha }} .
