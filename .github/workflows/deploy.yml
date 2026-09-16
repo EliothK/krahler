@@ -1,0 +1,126 @@
+name: deploy
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+# Default for every job. The deploy job widens this for itself.
+
+permissions:
+    contents: read
+
+# A second push while the first is deploying would race. Queue instead.
+concurrency:
+    group: deploy-${{github.ref}}
+    cancel-in-progress: false
+
+env:
+    REGISTRY: ${{ vars.REGISTRY }}
+    IMAGE_NAME: portfolio
+    RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+    CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+    DEPLOYMENT: ${{ vars.DEPLOYMENT }}
+
+jobs:
+    ci:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+
+            - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm test
+            - run: npm run build
+
+            # Proves the image builds on every PR. Doesn't push.
+            - name: Build container image
+              run: docker build -t "$IMAGE_NAME:${{github.sha}}" .
+
+    terraform:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        defaults:
+            run:
+                working-directory: terraform # applies to every run step below
+        permissions:
+            id-token: write # the backend now talks to Azure
+            contents: read
+        env:
+            ARM_USE_OIDC: true
+            ARM_CLIENT_ID: ${{secrets.AZURE_CLIENT_ID}}
+            ARM_TENANT_ID: ${{secrets.AZURE_TENANT_ID}}
+            ARM_SUBSCRIPTION_ID: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+        steps:
+            - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+
+            - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.0.0
+              with:
+                  terraform_version: 1.9.x
+
+            - run: terraform fmt -check -recursive
+            - name: terraform init
+              run: |
+                  terraform init \
+                    -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+                    -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+                    -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+                    -backend-config="key=${{ vars.TFSTATE_KEY }}"
+            - run: terraform validate
+
+    deploy:
+        needs: [ci, terraform]
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: production
+        permissions:
+            id-token: write # required for OIDC. Omit it and auth fails opaquely
+            contents: read
+        steps:
+            - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+
+            - name: Authenticate to Azure
+              uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.0.0
+              with:
+                  client-id: ${{secrets.AZURE_CLIENT_ID}}
+                  tenant-id: ${{secrets.AZURE_TENANT_ID}}
+                  subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+            - name: Log in to the registry
+              run: az acr login --name "${REGISTRY%%.*}"
+
+            - name: Build and push
+              run: |
+                  IMAGE="$REGISTRY/$IMAGE_NAME:${{github.sha}}"
+                  docker build -t "$IMAGE" .
+                  docker push "$IMAGE"
+
+            - name: Get cluster credentials
+              run: |
+                  az aks get-credentials \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --name "$CLUSTER_NAME" \
+                    --overwrite-existing
+
+            - name: Apply manifests
+              run: kubectl apply -f k8s/
+
+            - name: Set the image to this commit
+              run: |
+                  kubectl set image "deployment/$DEPLOYMENT" \
+                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME:${{github.sha}}" -n portfolio
+
+            - name: Verify the rollout actually succeeded
+              run: kubectl rollout status "deployment/$DEPLOYMENT" -n portfolio --timeout=120s
+
+            - name: Report what shipped
+              run: |
+                  echo "### Deployed \`${{github.sha}}\`" >> "$GITHUB_STEP_SUMMARY"
+                  kubectl get pods -n portfolio -l app=portfolio -o wide >> "$GITHUB_STEP_SUMMARY"
