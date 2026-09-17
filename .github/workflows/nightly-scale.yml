@@ -1,0 +1,94 @@
+name: nightly-scale
+
+# Scales the AKS default node pool to 0 overnight (10pm-5am America/Chicago) to save on compute cost, then back up in the morning.
+# The cluster (control plane, free tier) and everything in Terraform/k8s state stays put — only the VMs backing the node pool go away.
+#
+# GitHub Actions cron is always UTC, and America/Chicago flips between CST (UTC-6) and CDT (UTC-5).
+# Rather than maintain two separate cron lines by hand each DST transition, each job fires at both possible UTC hours and then checks the *actual* local hour before doing anything — the wrong-offset run just no-ops.
+
+on:
+    schedule:
+        - cron: "0 3,4 * * *" # 10pm CDT / 10pm CST
+        - cron: "0 10,11 * * *" # 5am CDT / 5am CST
+    workflow_dispatch:
+        inputs:
+            direction:
+                description: "Scale direction (bypasses the local-time check)"
+                type: choice
+                options: [down, up]
+                required: true
+
+permissions:
+    contents: read
+
+concurrency:
+    group: nightly-scale
+    cancel-in-progress: false
+
+env:
+    RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+    CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+    NODE_POOL: default
+    UP_COUNT: 2
+
+jobs:
+    scale:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: production
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - name: Determine direction
+              id: direction
+              run: |
+                  if [ -n "${{ inputs.direction }}" ]; then
+                    echo "value=${{ inputs.direction }}" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  hour=$(TZ=America/Chicago date +%H)
+                  case "$hour" in
+                    22) echo "value=down" >> "$GITHUB_OUTPUT" ;;
+                    05) echo "value=up" >> "$GITHUB_OUTPUT" ;;
+                    *)
+                      echo "Local hour is $hour (America/Chicago), not 22 or 05 - this is the redundant DST run, skipping."
+                      echo "value=skip" >> "$GITHUB_OUTPUT"
+                      ;;
+                  esac
+
+            - name: Authenticate to Azure
+              if: steps.direction.outputs.value != 'skip'
+              uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
+              with:
+                  client-id: ${{secrets.AZURE_CLIENT_ID}}
+                  tenant-id: ${{secrets.AZURE_TENANT_ID}}
+                  subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+            - name: Scale node pool down to 0
+              if: steps.direction.outputs.value == 'down'
+              run: |
+                  az aks nodepool scale \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --cluster-name "$CLUSTER_NAME" \
+                    --name "$NODE_POOL" \
+                    --node-count 0
+
+            - name: Scale node pool back up
+              if: steps.direction.outputs.value == 'up'
+              run: |
+                  az aks nodepool scale \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --cluster-name "$CLUSTER_NAME" \
+                    --name "$NODE_POOL" \
+                    --node-count "$UP_COUNT"
+
+            - name: Wait for pods to reschedule
+              if: steps.direction.outputs.value == 'up'
+              run: |
+                  az aks get-credentials \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --name "$CLUSTER_NAME" \
+                    --overwrite-existing
+                  kubectl rollout status "deployment/${{ vars.DEPLOYMENT }}" -n portfolio --timeout=180s
