@@ -4,6 +4,8 @@ on:
     push:
         branches: [main]
     pull_request:
+    workflow_dispatch: # Run workflow button — needed for a redeploy with no new commit,
+        # e.g. the morning after a nightly `terraform destroy`.
 
 # Default for every job. The deploy job widens this for itself.
 
