@@ -4,6 +4,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ARG VITE_GITHUB_USER
+ARG VITE_CONTACT_EMAIL
+ENV VITE_GITHUB_USER=${VITE_GITHUB_USER}
+ENV VITE_CONTACT_EMAIL=${VITE_CONTACT_EMAIL}
 RUN npm run build
 
 # Stage 2: serve (non-root)
@@ -13,6 +17,6 @@ COPY --chown=101:101 nginx.conf     /etc/nginx/conf.d/default.conf
 COPY --chown=101:101 security.conf  /etc/nginx/snippets/security.conf
 EXPOSE 8080
 
-LABEL org.opencontainers.image.source="https://github.com/eliothkrahler/portfolio"
+LABEL org.opencontainers.image.source="https://github.com/EliothK/portfolio"
 LABEL org.opencontainers.image.description="portfolio.krahler.com — static site on nginx"
 LABEL org.opencontainers.image.licenses="MIT"

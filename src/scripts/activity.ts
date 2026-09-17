@@ -1,4 +1,4 @@
-export const GITHUB_USER = import.meta.env.VITE_GITHUB_USER ?? "eliothkrahler";
+export const GITHUB_USER = import.meta.env.VITE_GITHUB_USER ?? "EliothK";
 
 export type RepoActivity = {
     name: string;

@@ -1,6 +1,6 @@
 import profilePic from "../assets/IandNoWest.webp";
 
-const GITHUB_USER = import.meta.env.VITE_GITHUB_USER ?? "eliothkrahler";
+const GITHUB_USER = import.meta.env.VITE_GITHUB_USER ?? "EliothK";
 const CONTACT_EMAIL =
     import.meta.env.VITE_CONTACT_EMAIL ?? "eliothkrahler@gmail.com";
 

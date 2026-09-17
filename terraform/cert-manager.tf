@@ -93,5 +93,12 @@ resource "kubernetes_manifest" "cluster_issuer" {
     }
   }
 
+  # These were originally applied by hand with `kubectl apply` before moving into Terraform.
+  # Import brought them into state but didn't strip the old "kubectl-client-side-apply" field manager's claim on fields it touched, so server-side apply conflicts on any field that manager still owns
+  # (e.g. spec.acme.email) until Terraform takes over as the sole field manager.
+  field_manager {
+    force_conflicts = true
+  }
+
   depends_on = [helm_release.cert_manager]
 }

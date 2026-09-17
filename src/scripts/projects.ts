@@ -41,8 +41,8 @@ export const PROJECTS: Project[] = [
             "Under-engineered in the places that would matter at scale: one node, no staging environment, rolling updates rather than canary, and secrets that would belong in Key Vault the moment there were any. Staging environment first — it's the one whose absence I'd actually feel.",
         ],
         links: [
-            { label: "The workflow", href: "https://github.com/eliothkrahler/portfolio/blob/main/.github/workflows/deploy.yml" },
-            { label: "The Terraform", href: "https://github.com/eliothkrahler/portfolio/tree/main/terraform" },
+            { label: "The workflow", href: "https://github.com/EliothK/portfolio/blob/main/.github/workflows/deploy.yml" },
+            { label: "The Terraform", href: "https://github.com/EliothK/portfolio/tree/main/terraform" },
             { label: "Full build log", href: "/build" },
         ],
     },

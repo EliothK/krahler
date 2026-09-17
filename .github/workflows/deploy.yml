@@ -23,6 +23,8 @@ env:
     RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
     CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
     DEPLOYMENT: ${{ vars.DEPLOYMENT }}
+    VITE_GITHUB_USER: ${{ vars.VITE_GITHUB_USER }}
+    VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
 
 jobs:
     ci:
@@ -51,6 +53,9 @@ jobs:
                   push: false
                   load: true
                   tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  build-args: |
+                      VITE_GITHUB_USER=${{ env.VITE_GITHUB_USER }}
+                      VITE_CONTACT_EMAIL=${{ env.VITE_CONTACT_EMAIL }}
                   cache-from: type=gha,scope=docker-build
                   cache-to: type=gha,mode=max,scope=docker-build
 
@@ -127,6 +132,9 @@ jobs:
                   push: false
                   load: true
                   tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  build-args: |
+                      VITE_GITHUB_USER=${{ env.VITE_GITHUB_USER }}
+                      VITE_CONTACT_EMAIL=${{ env.VITE_CONTACT_EMAIL }}
                   cache-from: type=gha,scope=docker-build
                   cache-to: type=gha,mode=max,scope=docker-build
 
