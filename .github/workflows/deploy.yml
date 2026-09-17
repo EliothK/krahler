@@ -50,6 +50,7 @@ jobs:
             run:
                 working-directory: terraform # applies to every run step below
         permissions:
+            # Dependabot PRs never get secrets, even same-repo ones, so the real backend init below only runs on push (post-merge to main).
             id-token: write # the backend now talks to Azure
             contents: read
         env:
@@ -65,13 +66,20 @@ jobs:
                   terraform_version: 1.9.x
 
             - run: terraform fmt -check -recursive
-            - name: terraform init
+
+            - name: terraform init (real backend, push only)
+              if: github.event_name == 'push'
               run: |
                   terraform init \
                     -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
                     -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
                     -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
                     -backend-config="key=${{ vars.TFSTATE_KEY }}"
+
+            - name: terraform init (no backend, PR checks — no secrets available)
+              if: github.event_name != 'push'
+              run: terraform init -backend=false
+
             - run: terraform validate
 
     deploy:
