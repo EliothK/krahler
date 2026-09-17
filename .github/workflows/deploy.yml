@@ -83,6 +83,7 @@ jobs:
         permissions:
             id-token: write # required for OIDC. Omit it and auth fails opaquely
             contents: read
+            attestations: write # required to publish build provenance
         steps:
             - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
 
@@ -96,11 +97,31 @@ jobs:
             - name: Log in to the registry
               run: az acr login --name "${REGISTRY%%.*}"
 
-            - name: Build and push
+            - name: Build image
+              run: docker build -t "$REGISTRY/$IMAGE_NAME:${{github.sha}}" .
+
+            - name: Scan image for vulnerabilities
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  severity: HIGH,CRITICAL
+                  exit-code: "1"
+                  ignore-unfixed: true
+
+            - name: Push image
+              id: push
               run: |
                   IMAGE="$REGISTRY/$IMAGE_NAME:${{github.sha}}"
-                  docker build -t "$IMAGE" .
                   docker push "$IMAGE"
+                  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE" | cut -d@ -f2)
+                  echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+            - name: Attest build provenance
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  subject-digest: ${{ steps.push.outputs.digest }}
+                  push-to-registry: true
 
             - name: Get cluster credentials
               run: |
