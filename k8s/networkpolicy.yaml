@@ -14,11 +14,11 @@ metadata:
     namespace: portfolio
 spec:
     podSelector:
-        matchLabels: { app:portfolio }
+        matchLabels: { app: portfolio }
     policyTypes: [Ingress]
     ingress:
         - from:
               - namespaceSelector:
-                matchLabels: { kubernetes.io/metadata.name: aks_istio_system }
+                    matchLabels: { kubernetes.io/metadata.name: aks-istio-system }
           ports:
               - { protocol: TCP, port: 8080 }

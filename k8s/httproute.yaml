@@ -7,9 +7,9 @@ spec:
     parentRefs:
         - name: portfolio-gateway
           sectionName: https
-    hostname: ["krahler.com"]
+    hostnames: ["krahler.com"]
     rules:
         - matches:
               - path: { type: PathPrefix, value: / }
           backendRefs:
-              - { name: portfolio, port:80 }
+              - { name: portfolio, port: 80 }

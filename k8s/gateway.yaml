@@ -21,4 +21,4 @@ spec:
               mode: Terminate
               certificateRefs:
                   - { kind: Secret, name: portfolio-tls }
-          allowedRoutes: { namespaces: { from:Same } }
+          allowedRoutes: { namespaces: { from: Same } }
