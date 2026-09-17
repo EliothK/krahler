@@ -143,10 +143,10 @@ jobs:
             - name: Apply manifests
               run: kubectl apply -f k8s/
 
-            - name: Set the image to this commit
+            - name: Set the image to this build's digest
               run: |
                   kubectl set image "deployment/$DEPLOYMENT" \
-                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME:${{github.sha}}" -n portfolio
+                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME@${{ steps.push.outputs.digest }}" -n portfolio
 
             - name: Verify the rollout actually succeeded
               run: kubectl rollout status "deployment/$DEPLOYMENT" -n portfolio --timeout=120s
