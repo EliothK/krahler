@@ -18,10 +18,5 @@ describe('App', () => {
         const {container} = render(<App />);
         expect(container.textContent).not.toMatch(/\[__+\]/);
     });
-
-    // Deliberately failing — testing that a broken ci run blocks deploy. Revert after.
-    it('TEMP: deliberately fails to test the pipeline gate', () => {
-        expect(true).toBe(false);
-    });
 });
 
