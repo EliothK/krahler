@@ -82,7 +82,7 @@ resource "azurerm_kubernetes_cluster" "portfolio" {
   default_node_pool {
     name       = "default"
     node_count = 2
-    vm_size    = "Standard_D2s_v6"
+    vm_size    = "Standard_D2als_v6"
   }
 
   identity {
