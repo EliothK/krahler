@@ -163,10 +163,11 @@ jobs:
             - name: Apply manifests
               run: kubectl apply -f k8s/
 
+            # TEST: deliberately bogus digest to verify rollout status fails correctly and old pods keep serving. Revert after.
             - name: Set the image to this build's digest
               run: |
                   kubectl set image "deployment/$DEPLOYMENT" \
-                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME@${{ steps.push.outputs.digest }}" -n portfolio
+                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME@sha256:0000000000000000000000000000000000000000000000000000000000000000" -n portfolio
 
             - name: Verify the rollout actually succeeded
               run: kubectl rollout status "deployment/$DEPLOYMENT" -n portfolio --timeout=120s
