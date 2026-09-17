@@ -6,6 +6,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 5.3.0"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.16"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.34"
+    }
   }
 
   backend "azurerm" {
@@ -21,6 +29,7 @@ provider "azurerm" {
     "Microsoft.ContainerRegistry",
     "Microsoft.ContainerService",    # AKS
     "Microsoft.OperationalInsights", # Log Analytics
+    "Microsoft.Insights",            # Application Insights, availability tests, alerts
   ]
 }
 
@@ -72,7 +81,7 @@ resource "azurerm_kubernetes_cluster" "portfolio" {
 
   default_node_pool {
     name       = "default"
-    node_count = 1
+    node_count = 2
     vm_size    = "Standard_D2s_v6"
   }
 
@@ -82,6 +91,11 @@ resource "azurerm_kubernetes_cluster" "portfolio" {
 
   node_provisioning_profile {
     mode = "Manual"
+  }
+
+  oms_agent {
+    log_analytics_workspace_id      = azurerm_log_analytics_workspace.portfolio.id
+    msi_auth_for_monitoring_enabled = true
   }
 }
 

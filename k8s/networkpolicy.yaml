@@ -19,6 +19,6 @@ spec:
     ingress:
         - from:
               - namespaceSelector:
-                    matchLabels: { kubernetes.io/metadata.name: aks-istio-system }
+                    matchLabels: { kubernetes.io/metadata.name: gateway-system }
           ports:
               - { protocol: TCP, port: 8080 }

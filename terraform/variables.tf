@@ -21,6 +21,16 @@ variable "acr_name" {
 }
 
 
+variable "acme_email" {
+  description = "Contact email registered with Let's Encrypt for certificate expiry notices."
+  type        = string
+}
+
+variable "alert_email" {
+  description = "Email address for monitoring alerts and budget notifications."
+  type        = string
+}
+
 variable "tags" {
   description = "Applied to everything, so the cost view is readable"
   type        = map(string)

@@ -6,6 +6,7 @@ metadata:
 spec:
     parentRefs:
         - name: portfolio-gateway
+          namespace: gateway-system
           sectionName: https
     hostnames: ["krahler.com"]
     rules:
