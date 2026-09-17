@@ -34,9 +34,12 @@ function ProjectCarousel({ onOpen }: Props) {
     }, [stepWidth]);
 
     useEffect(() => {
-        sync();
+        const frame = requestAnimationFrame(sync);
         window.addEventListener("resize", sync);
-        return () => window.removeEventListener("resize", sync);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("resize", sync);
+        };
     }, [sync]);
 
     const scrollBy = (dir: -1 | 1) => {
