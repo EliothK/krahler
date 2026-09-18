@@ -35,8 +35,8 @@ resource "azurerm_application_insights_standard_web_test" "portfolio" {
   resource_group_name     = azurerm_resource_group.portfolio.name
   location                = azurerm_resource_group.portfolio.location
   application_insights_id = azurerm_application_insights.portfolio.id
-  geo_locations           = ["us-il-ch1-azr", "us-tx-sn1-azr", "us-va-ash-azr"]
-  frequency               = 300
+  geo_locations           = ["us-il-ch1-azr", "us-va-ash-azr"]
+  frequency               = 900
   timeout                 = 30
   enabled                 = true
 
@@ -60,7 +60,7 @@ resource "azurerm_monitor_metric_alert" "availability" {
   ]
   severity    = 1
   frequency   = "PT1M"
-  window_size = "PT5M"
+  window_size = "PT15M"
   description = "krahler.com is failing its availability test."
 
   application_insights_web_test_location_availability_criteria {

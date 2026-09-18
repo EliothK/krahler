@@ -1,7 +1,8 @@
 name: nightly-scale
 
-# Scales the AKS default node pool to 0 overnight (10pm-5am America/Chicago) to save on compute cost, then back up in the morning.
-# The cluster (control plane, free tier) and everything in Terraform/k8s state stays put — only the VMs backing the node pool go away.
+# Stops the AKS cluster overnight (10pm-5am America/Chicago) to save on compute cost, then starts it again in the morning.
+# The cluster (control plane, free tier) and everything in Terraform/k8s state stays put — only the node VMs are deallocated.
+# (`az aks nodepool scale --node-count 0` is not an option: the default pool is the system pool, which must keep at least 1 node.)
 #
 # GitHub Actions cron is always UTC, and America/Chicago flips between CST (UTC-6) and CDT (UTC-5).
 # Rather than maintain two separate cron lines by hand each DST transition, each job fires at both possible UTC hours and then checks the *actual* local hour before doing anything — the wrong-offset run just no-ops.
@@ -28,8 +29,6 @@ concurrency:
 env:
     RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
     CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
-    NODE_POOL: default
-    UP_COUNT: 2
 
 jobs:
     scale:
@@ -66,23 +65,19 @@ jobs:
                   tenant-id: ${{secrets.AZURE_TENANT_ID}}
                   subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
 
-            - name: Scale node pool down to 0
+            - name: Stop cluster
               if: steps.direction.outputs.value == 'down'
               run: |
-                  az aks nodepool scale \
-                    --resource-group "$RESOURCE_GROUP" \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --name "$NODE_POOL" \
-                    --node-count 0
+                  state=$(az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER_NAME" --query powerState.code -o tsv)
+                  [ "$state" = "Stopped" ] && { echo "Already stopped."; exit 0; }
+                  az aks stop --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
 
-            - name: Scale node pool back up
+            - name: Start cluster
               if: steps.direction.outputs.value == 'up'
               run: |
-                  az aks nodepool scale \
-                    --resource-group "$RESOURCE_GROUP" \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --name "$NODE_POOL" \
-                    --node-count "$UP_COUNT"
+                  state=$(az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER_NAME" --query powerState.code -o tsv)
+                  [ "$state" = "Running" ] && { echo "Already running."; exit 0; }
+                  az aks start --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
 
             - name: Wait for pods to reschedule
               if: steps.direction.outputs.value == 'up'

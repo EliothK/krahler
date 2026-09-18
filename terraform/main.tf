@@ -83,6 +83,7 @@ resource "azurerm_kubernetes_cluster" "portfolio" {
     name                        = "default"
     node_count                  = 1
     vm_size                     = "Standard_D2as_v6"
+    os_disk_size_gb             = 32
     temporary_name_for_rotation = "tmprot"
   }
 
