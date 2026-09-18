@@ -80,9 +80,10 @@ resource "azurerm_kubernetes_cluster" "portfolio" {
   tags                = var.tags
 
   default_node_pool {
-    name       = "default"
-    node_count = 2
-    vm_size    = "Standard_D2als_v6"
+    name                        = "default"
+    node_count                  = 2
+    vm_size                     = "Standard_D2als_v6"
+    temporary_name_for_rotation = "temp"
   }
 
   identity {
