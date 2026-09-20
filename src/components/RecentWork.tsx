@@ -1,32 +1,24 @@
 import { useEffect, useState } from "react";
 import {
   fetchLiveActivity,
-  relativeTime,
   GITHUB_USER,
   type Activity,
 } from "../scripts/activity";
 
 export default function RecentWork() {
   const [data, setData] = useState<Activity | null>(null);
-  const [source, setSource] = useState<"build" | "live">("build");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/activity.json")
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d: Activity) => !cancelled && setData(d))
-      .catch(() => !cancelled && setFailed(true));
-
     fetchLiveActivity()
       .then((d) => {
-        if (cancelled || !d || d.repos.length === 0) return;
-        setData(d);
-        setSource("live");
-        setFailed(false);
+        if (cancelled) return;
+        if (d) setData(d);
+        else setFailed(true);
       })
-      .catch(() => {});
+      .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
@@ -38,8 +30,7 @@ export default function RecentWork() {
         What I'm working on now
       </h2>
       <p className="section-intro mb-4">
-        Pulled from GitHub. Written into the site by the same pipeline that
-        deploys it, and refreshed live in your browser when GitHub answers.
+        Pulled from GitHub live, in your browser, each time the page loads.
       </p>
 
       <ul className="work-list">
@@ -99,13 +90,7 @@ export default function RecentWork() {
         ))}
       </ul>
 
-      {data && (
-        <p className="freshness">
-          {source === "live"
-            ? "Fetched from GitHub just now."
-            : `Written at build time ${relativeTime(data.generatedAt)} by the deploy pipeline.`}
-        </p>
-      )}
+      {data && <p className="freshness">Fetched from GitHub just now.</p>}
     </section>
   );
 }

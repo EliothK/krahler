@@ -1,5 +1,5 @@
-// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src in sync (security.conf, public/staticwebapp.config.json).
-const PROFILE_PIC = "https://avatars.githubusercontent.com/u/175250448?v=4&s=720";
+// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src (security.conf, public/staticwebapp.config.json) and the preload in index.html in sync.
+const PROFILE_PIC = "https://avatars.githubusercontent.com/u/175250448?v=4&s=320";
 
 const GITHUB_USER = import.meta.env.VITE_GITHUB_USER || "EliothK";
 const CONTACT_EMAIL =
@@ -30,6 +30,7 @@ function ProfileCard() {
                 <img
                     className="profile-photo mb-1"
                     src={PROFILE_PIC}
+                    fetchPriority="high"
                     alt="Elioth Krahler"
                     width={360}
                     height={360}
