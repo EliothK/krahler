@@ -5,6 +5,7 @@
 // The unit tests can't see deployed configuration, so a typo in staticwebapp.config.json could drop a security header or the asset cache while every unit test stays green.
 // These checks are what a visitor's browser would actually receive.
 import { describe, it, expect, beforeAll } from "vitest";
+import { connect } from "node:tls";
 
 const BASE = (process.env.SMOKE_URL ?? "").replace(/\/$/, "");
 if (!BASE) {
@@ -25,6 +26,30 @@ describe(`smoke: ${BASE}`, () => {
         const res = await get("/");
         indexHeaders = res.headers;
         indexHtml = await res.text();
+    });
+
+    describe("tls", () => {
+        // Managed certificates renew themselves; this is the alarm if that ever stops working.
+        it("serves a valid certificate with more than 14 days left", async () => {
+            const { hostname } = new URL(BASE);
+            const cert = await new Promise<{ valid_to: string; subjectaltname?: string }>(
+                (resolve, reject) => {
+                    const socket = connect(
+                        { host: hostname, port: 443, servername: hostname },
+                        () => {
+                            const peer = socket.getPeerCertificate();
+                            const authorized = socket.authorized;
+                            socket.end();
+                            if (!authorized) reject(new Error("certificate not trusted"));
+                            else resolve(peer);
+                        },
+                    );
+                    socket.on("error", reject);
+                },
+            );
+            const daysLeft = (Date.parse(cert.valid_to) - Date.now()) / 86_400_000;
+            expect(daysLeft).toBeGreaterThan(14);
+        });
     });
 
     describe("pages", () => {

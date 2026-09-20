@@ -42,14 +42,25 @@ resource "azurerm_role_assignment" "deploy_swa" {
 #   So apply this only AFTER the CNAME exists in Cloudflare, i.e. at cutover, with a targeted apply.
 #
 # Both records must be DNS-only (grey cloud) in Cloudflare; a proxied record breaks validation.
+#
+# ignore_changes on validation_type: the Azure API does not return it, so after an import (or a state move between roots) it reads as unset and Terraform plans to REPLACE the domain, which would drop the live certificate.
+# It cannot be changed in place anyway (any change means recreation), so ignoring it loses nothing.
 resource "azurerm_static_web_app_custom_domain" "apex" {
   static_web_app_id = azurerm_static_web_app.portfolio.id
   domain_name       = var.domain
   validation_type   = "dns-txt-token"
+
+  lifecycle {
+    ignore_changes = [validation_type]
+  }
 }
 
 resource "azurerm_static_web_app_custom_domain" "www" {
   static_web_app_id = azurerm_static_web_app.portfolio.id
   domain_name       = "www.${var.domain}"
   validation_type   = "cname-delegation"
+
+  lifecycle {
+    ignore_changes = [validation_type]
+  }
 }

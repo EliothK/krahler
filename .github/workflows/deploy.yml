@@ -50,6 +50,7 @@ jobs:
               uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
               with:
                   context: .
+                  file: lab/Dockerfile
                   push: false
                   load: true
                   tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -59,12 +60,20 @@ jobs:
                   cache-from: type=gha,scope=docker-build
                   cache-to: type=gha,mode=max,scope=docker-build
 
+    # The site and the AKS lab are separate Terraform roots with separate state, so each is checked on its own.
     terraform:
+        name: terraform (${{ matrix.name }})
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { name: site, dir: terraform, key: site.tfstate }
+                    - { name: lab, dir: lab/terraform, key: "${{ vars.TFSTATE_KEY }}" }
         defaults:
             run:
-                working-directory: terraform # applies to every run step below
+                working-directory: ${{ matrix.dir }} # applies to every run step below
         permissions:
             # Dependabot PRs never get secrets, even same-repo ones, so the real backend init below only runs on push (post-merge to main).
             id-token: write # the backend now talks to Azure
@@ -90,7 +99,7 @@ jobs:
                     -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
                     -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
                     -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
-                    -backend-config="key=${{ vars.TFSTATE_KEY }}"
+                    -backend-config="key=${{ matrix.key }}"
 
             - name: terraform init (no backend, PR checks — no secrets available)
               if: github.event_name != 'push'
@@ -129,6 +138,7 @@ jobs:
               uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
               with:
                   context: .
+                  file: lab/Dockerfile
                   push: false
                   load: true
                   tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -176,7 +186,7 @@ jobs:
                     --overwrite-existing
 
             - name: Apply manifests
-              run: kubectl apply -f k8s/
+              run: kubectl apply -f lab/k8s/
 
             - name: Set the image to this build's digest
               run: |

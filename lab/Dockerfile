@@ -1,3 +1,5 @@
+# AKS lab image. The build context is the REPO ROOT, not lab/ (it needs the site source), so build with:
+#   podman build -f lab/Dockerfile -t portfolio .
 # Stage 1: build
 FROM docker.io/library/node:24-alpine AS build
 WORKDIR /app
@@ -13,8 +15,8 @@ RUN npm run build
 # Stage 2: serve (non-root)
 FROM docker.io/nginxinc/nginx-unprivileged:alpine
 COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
-COPY --chown=101:101 nginx.conf     /etc/nginx/conf.d/default.conf
-COPY --chown=101:101 security.conf  /etc/nginx/snippets/security.conf
+COPY --chown=101:101 lab/nginx.conf     /etc/nginx/conf.d/default.conf
+COPY --chown=101:101 lab/security.conf  /etc/nginx/snippets/security.conf
 EXPOSE 8080
 
 LABEL org.opencontainers.image.source="https://github.com/EliothK/krahler"

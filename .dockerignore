@@ -6,7 +6,9 @@ dist
 .env.*
 .github
 terraform
-k8s
+lab/terraform
+lab/k8s
+smoke
 *.md
 .DS_Store
 npm-debug.log*

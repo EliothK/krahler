@@ -1,4 +1,4 @@
 resource_group_name  = "rg-tfstate"
 storage_account_name = "sttfstate"
 container_name       = "tfstate"
-key                  = "portfolio.tfstate"
+key                  = "site.tfstate" # the lab uses its own key (portfolio.tfstate) so the two never share state

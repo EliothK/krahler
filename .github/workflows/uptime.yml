@@ -1,0 +1,80 @@
+name: uptime
+
+# Replaces the Azure availability test (App Insights + Log Analytics), which cost money and lived in the AKS lab's resource group.
+# Every 15 minutes it runs the same smoke test the deploy runs, against both public hostnames, so it checks status codes, deep links, security headers, caching and TLS, not just "is it up".
+#
+# Alerting: when a check fails (after one retry) it opens a GitHub issue labelled `uptime`, and GitHub emails the repo owner. When checks pass again it comments on and closes that issue.
+# Notes:
+#   - Scheduled workflows only run from the DEFAULT branch, so nothing happens until this file is merged to main.
+#   - GitHub delays scheduled runs under load, and disables them after 60 days without repo activity (re-enable in the Actions tab).
+
+on:
+    schedule:
+        - cron: "*/15 * * * *"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: uptime
+    cancel-in-progress: true
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: read
+            issues: write # open and close the `uptime` issue
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - run: npm ci
+
+            # One retry after a minute, so a single blip at the edge doesn't page anyone.
+            - name: Smoke test both hostnames
+              id: smoke
+              run: |
+                  failed=""
+                  for url in https://krahler.com https://www.krahler.com; do
+                    SMOKE_URL="$url" npm run smoke || { sleep 60; SMOKE_URL="$url" npm run smoke; } || failed="$failed $url"
+                  done
+                  echo "failed=${failed# }" >> "$GITHUB_OUTPUT"
+                  [ -z "$failed" ]
+              continue-on-error: true
+
+            - name: Open an issue if the site is failing
+              if: steps.smoke.outcome == 'failure'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  FAILED: ${{ steps.smoke.outputs.failed }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              run: |
+                  gh label create uptime --color B60205 --description "Automated uptime check" 2>/dev/null || true
+                  open=$(gh issue list --label uptime --state open --json number --jq '.[0].number')
+                  body="Smoke test failed for: ${FAILED:-unknown}. Run: $RUN_URL"
+                  if [ -n "$open" ]; then
+                    gh issue comment "$open" --body "Still failing. $body"
+                  else
+                    gh issue create --label uptime --title "krahler.com is failing its uptime check" --body "$body"
+                  fi
+
+            - name: Close the issue once the site recovers
+              if: steps.smoke.outcome == 'success'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              run: |
+                  for n in $(gh issue list --label uptime --state open --json number --jq '.[].number'); do
+                    gh issue close "$n" --comment "Recovered. Checks are passing again: $RUN_URL"
+                  done
+
+            - name: Fail the run if the site is down
+              if: steps.smoke.outcome == 'failure'
+              run: exit 1
