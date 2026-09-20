@@ -161,6 +161,13 @@ jobs:
                   subject-digest: ${{ steps.push.outputs.digest }}
                   push-to-registry: true
 
+            - name: Start cluster if nightly-scale stopped it
+              run: |
+                  state=$(az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER_NAME" --query powerState.code -o tsv)
+                  if [ "$state" != "Running" ]; then
+                    az aks start --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
+                  fi
+
             - name: Get cluster credentials
               run: |
                   az aks get-credentials \
