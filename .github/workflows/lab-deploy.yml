@@ -1,0 +1,119 @@
+name: lab-deploy
+
+# The original AKS delivery pipeline, kept as a manual-only workflow for the on-demand Kubernetes lab (lab/).
+# krahler.com itself is served by Static Web Apps and deployed by deploy.yml; nothing here runs automatically, so it can never start the cluster by accident.
+#
+# Use it after bringing the lab up (see lab/README.md): Actions -> lab-deploy -> Run workflow.
+# It builds the image, scans it (Trivy), pushes it to ACR, attests build provenance, starts the cluster if it is stopped, applies lab/k8s/, pins the deployment to the image digest, and waits for the rollout.
+# Needs the repo variables REGISTRY, RESOURCE_GROUP, CLUSTER_NAME, DEPLOYMENT (and VITE_*) and the lab's Terraform applied, or it fails at the first Azure step.
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: lab-deploy
+    cancel-in-progress: false
+
+env:
+    REGISTRY: ${{ vars.REGISTRY }}
+    IMAGE_NAME: portfolio
+    RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+    CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+    DEPLOYMENT: ${{ vars.DEPLOYMENT }}
+    VITE_GITHUB_USER: ${{ vars.VITE_GITHUB_USER }}
+    VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        environment: production
+        permissions:
+            id-token: write # required for OIDC. Omit it and auth fails opaquely
+            contents: read
+            attestations: write # required to publish build provenance
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - name: Authenticate to Azure
+              uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
+              with:
+                  client-id: ${{secrets.AZURE_CLIENT_ID}}
+                  tenant-id: ${{secrets.AZURE_TENANT_ID}}
+                  subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+            - name: Log in to the registry
+              run: az acr login --name "${REGISTRY%%.*}"
+
+            - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+            # A local build tagged by SHA (push: false); the actual push and the digest-based deploy happen below.
+            - name: Build image
+              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+              with:
+                  context: .
+                  file: lab/Dockerfile
+                  push: false
+                  load: true
+                  tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  build-args: |
+                      VITE_GITHUB_USER=${{ env.VITE_GITHUB_USER }}
+                      VITE_CONTACT_EMAIL=${{ env.VITE_CONTACT_EMAIL }}
+                  cache-from: type=gha,scope=docker-build
+                  cache-to: type=gha,mode=max,scope=docker-build
+
+            - name: Scan image for vulnerabilities
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  severity: HIGH,CRITICAL
+                  exit-code: "1"
+                  ignore-unfixed: true
+
+            - name: Push image
+              id: push
+              run: |
+                  IMAGE="$REGISTRY/$IMAGE_NAME:${{github.sha}}"
+                  docker push "$IMAGE"
+                  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE" | cut -d@ -f2)
+                  echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+            - name: Attest build provenance
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  subject-digest: ${{ steps.push.outputs.digest }}
+                  push-to-registry: true
+
+            - name: Start the cluster if it is stopped
+              run: |
+                  state=$(az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER_NAME" --query powerState.code -o tsv)
+                  if [ "$state" != "Running" ]; then
+                    az aks start --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
+                  fi
+
+            - name: Get cluster credentials
+              run: |
+                  az aks get-credentials \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --name "$CLUSTER_NAME" \
+                    --overwrite-existing
+
+            - name: Apply manifests
+              run: kubectl apply -f lab/k8s/
+
+            - name: Set the image to this build's digest
+              run: |
+                  kubectl set image "deployment/$DEPLOYMENT" \
+                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME@${{ steps.push.outputs.digest }}" -n portfolio
+
+            - name: Verify the rollout actually succeeded
+              run: kubectl rollout status "deployment/$DEPLOYMENT" -n portfolio --timeout=120s
+
+            - name: Report what shipped
+              run: |
+                  echo "### Deployed \`${{github.sha}}\` to the AKS lab" >> "$GITHUB_STEP_SUMMARY"
+                  kubectl get pods -n portfolio -l app=portfolio -o wide >> "$GITHUB_STEP_SUMMARY"

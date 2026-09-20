@@ -1,28 +1,30 @@
 name: deploy
 
+# Production pipeline for krahler.com (Azure Static Web Apps).
+#   pull_request        ci + terraform checks only, nothing is deployed
+#   push to main        ci + terraform checks, then deploy, then smoke test and Lighthouse against the live site
+#   workflow_dispatch   redeploy without a new commit
+#
+# The AKS lab has its own manual-only pipeline: lab-deploy.yml. Nothing here can start or touch the cluster.
+#
+# The required status checks on main are named `ci` and `terraform`. Keep those two job names.
+
 on:
     push:
         branches: [main]
     pull_request:
-    workflow_dispatch: # Run workflow button — needed for a redeploy with no new commit,
-        # e.g. the morning after a nightly `terraform destroy`.
+    workflow_dispatch:
 
 # Default for every job. The deploy job widens this for itself.
-
 permissions:
     contents: read
 
 # A second push while the first is deploying would race. Queue instead.
 concurrency:
-    group: deploy-${{github.ref}}
+    group: deploy-${{ github.ref }}
     cancel-in-progress: false
 
 env:
-    REGISTRY: ${{ vars.REGISTRY }}
-    IMAGE_NAME: portfolio
-    RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
-    CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
-    DEPLOYMENT: ${{ vars.DEPLOYMENT }}
     VITE_GITHUB_USER: ${{ vars.VITE_GITHUB_USER }}
     VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
 
@@ -39,30 +41,23 @@ jobs:
                   cache: "npm"
 
             - run: npm ci
+            - name: Audit production dependencies
+              run: npm audit --omit=dev --audit-level=high
             - run: npm run lint
             - run: npm test
             - run: npm run build
 
-            - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-            # Proves the image builds on every PR. Doesn't push. Shares the GitHub Actions layer cache with the deploy job's real build below, so a source-only change reuses the cached npm ci layer.
-            - name: Build container image
-              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+            # The deploy job ships exactly this build, so what is deployed is what was tested.
+            - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  context: .
-                  file: lab/Dockerfile
-                  push: false
-                  load: true
-                  tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
-                  build-args: |
-                      VITE_GITHUB_USER=${{ env.VITE_GITHUB_USER }}
-                      VITE_CONTACT_EMAIL=${{ env.VITE_CONTACT_EMAIL }}
-                  cache-from: type=gha,scope=docker-build
-                  cache-to: type=gha,mode=max,scope=docker-build
+                  name: site-dist
+                  path: dist
+                  if-no-files-found: error
+                  retention-days: 7
 
     # The site and the AKS lab are separate Terraform roots with separate state, so each is checked on its own.
-    terraform:
-        name: terraform (${{ matrix.name }})
+    terraform-validate:
+        name: terraform-validate (${{ matrix.name }})
         runs-on: ubuntu-latest
         timeout-minutes: 10
         strategy:
@@ -76,7 +71,7 @@ jobs:
                 working-directory: ${{ matrix.dir }} # applies to every run step below
         permissions:
             # Dependabot PRs never get secrets, even same-repo ones, so the real backend init below only runs on push (post-merge to main).
-            id-token: write # the backend now talks to Azure
+            id-token: write # the backend talks to Azure
             contents: read
         env:
             ARM_USE_OIDC: true
@@ -107,18 +102,42 @@ jobs:
 
             - run: terraform validate
 
+    # One stable check name for branch protection. The matrix job above has per-root names, which a required check cannot follow.
+    terraform:
+        needs: terraform-validate
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 2
+        steps:
+            - name: Both Terraform roots validated
+              run: |
+                  echo "terraform-validate: ${{ needs.terraform-validate.result }}"
+                  [ "${{ needs.terraform-validate.result }}" = "success" ]
+
     deploy:
         needs: [ci, terraform]
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
         timeout-minutes: 15
         environment: production
         permissions:
             id-token: write # required for OIDC. Omit it and auth fails opaquely
             contents: read
-            attestations: write # required to publish build provenance
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            # Needed to run the smoke and Lighthouse checks after the deploy.
+            - run: npm ci
+
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: site-dist
+                  path: dist
 
             - name: Authenticate to Azure
               uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
@@ -127,76 +146,47 @@ jobs:
                   tenant-id: ${{secrets.AZURE_TENANT_ID}}
                   subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
 
-            - name: Log in to the registry
-              run: az acr login --name "${REGISTRY%%.*}"
-
-            - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-            # Same GHA cache scope as the ci job's build — a PR that already exercised this Dockerfile makes this build near-instant on merge.
-            # Still just a local build (push: false) tagged by SHA; the actual push and digest-based deploy below are unchanged.
-            - name: Build image
-              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-              with:
-                  context: .
-                  file: lab/Dockerfile
-                  push: false
-                  load: true
-                  tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-                  build-args: |
-                      VITE_GITHUB_USER=${{ env.VITE_GITHUB_USER }}
-                      VITE_CONTACT_EMAIL=${{ env.VITE_CONTACT_EMAIL }}
-                  cache-from: type=gha,scope=docker-build
-                  cache-to: type=gha,mode=max,scope=docker-build
-
-            - name: Scan image for vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-              with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-                  severity: HIGH,CRITICAL
-                  exit-code: "1"
-                  ignore-unfixed: true
-
-            - name: Push image
-              id: push
+            # No long-lived deployment token in GitHub: read it from Azure with the OIDC login, at run time.
+            - name: Get deployment token
+              id: token
               run: |
-                  IMAGE="$REGISTRY/$IMAGE_NAME:${{github.sha}}"
-                  docker push "$IMAGE"
-                  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE" | cut -d@ -f2)
-                  echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+                  token=$(az staticwebapp secrets list \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query properties.apiKey -o tsv)
+                  echo "::add-mask::$token"
+                  echo "token=$token" >> "$GITHUB_OUTPUT"
 
-            - name: Attest build provenance
-              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-              with:
-                  subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-                  subject-digest: ${{ steps.push.outputs.digest }}
-                  push-to-registry: true
+            # dist/ already contains staticwebapp.config.json (copied from public/ by Vite).
+            - name: Deploy to Static Web Apps
+              env:
+                  SWA_CLI_DEPLOYMENT_TOKEN: ${{ steps.token.outputs.token }}
+              run: npx --yes @azure/static-web-apps-cli@2.0.10 deploy ./dist --env production
 
-            - name: Start cluster if nightly-scale stopped it
+            - name: Find the deployed URL
+              id: site
               run: |
-                  state=$(az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER_NAME" --query powerState.code -o tsv)
-                  if [ "$state" != "Running" ]; then
-                    az aks start --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
-                  fi
+                  host=$(az staticwebapp show \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query defaultHostname -o tsv)
+                  echo "url=https://$host" >> "$GITHUB_OUTPUT"
 
-            - name: Get cluster credentials
-              run: |
-                  az aks get-credentials \
-                    --resource-group "$RESOURCE_GROUP" \
-                    --name "$CLUSTER_NAME" \
-                    --overwrite-existing
+            # A fresh deploy can take a few seconds to reach every edge, so wait for the page rather than failing the checks on a race.
+            - name: Wait for the new version to answer
+              run: curl -sf --retry 10 --retry-delay 5 --retry-all-errors -o /dev/null "${{ steps.site.outputs.url }}/"
 
-            - name: Apply manifests
-              run: kubectl apply -f lab/k8s/
+            - name: Smoke test the live site
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run smoke
 
-            - name: Set the image to this build's digest
-              run: |
-                  kubectl set image "deployment/$DEPLOYMENT" \
-                    "$DEPLOYMENT=$REGISTRY/$IMAGE_NAME@${{ steps.push.outputs.digest }}" -n portfolio
-
-            - name: Verify the rollout actually succeeded
-              run: kubectl rollout status "deployment/$DEPLOYMENT" -n portfolio --timeout=120s
+            - name: Lighthouse thresholds
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run lighthouse
 
             - name: Report what shipped
               run: |
-                  echo "### Deployed \`${{github.sha}}\`" >> "$GITHUB_STEP_SUMMARY"
-                  kubectl get pods -n portfolio -l app=portfolio -o wide >> "$GITHUB_STEP_SUMMARY"
+                  echo "### Deployed \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+                  echo "${{ steps.site.outputs.url }} (krahler.com)" >> "$GITHUB_STEP_SUMMARY"

@@ -25,7 +25,7 @@ const DECISIONS: { title: string; body: string }[] = [
   },
   {
     title: "Cheap on purpose",
-    body: "Free-tier AKS control plane, one Standard_D2as_v6 node, and a nightly-scale workflow that runs az aks stop at 10pm Central and az aks start at 5am, so the site is deliberately offline overnight. It fires at both possible UTC hours and checks the real local hour, so daylight saving needs no cron edits. A $50 subscription budget alerts at 80%.",
+    body: "On AKS: free-tier control plane, one Standard_D2as_v6 node, and a nightly-scale workflow that ran az aks stop at 10pm Central and az aks start at 5am, so the site was deliberately offline overnight. It fired at both possible UTC hours and checked the real local hour, so daylight saving needed no cron edits. That workflow is retired now that the site is on Static Web Apps. The $50 subscription budget, alerting at 80%, is still in place.",
   },
   {
     title: "Deploy by digest, gate on rollout",

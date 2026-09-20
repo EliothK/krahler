@@ -43,7 +43,7 @@ export const PROJECTS: Project[] = [
             "Still under-engineered: no staging environment, Terraform applied by hand rather than by the pipeline, and no alert on a bad deploy other than the external availability test. Staging environment first - it's the one whose absence I'd actually feel.",
         ],
         links: [
-            { label: "The workflow", href: "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy-swa.yml" },
+            { label: "The workflow", href: "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy.yml" },
             { label: "The Terraform", href: "https://github.com/EliothK/krahler/tree/main/terraform" },
             { label: "Full build log", href: "/build" },
         ],
