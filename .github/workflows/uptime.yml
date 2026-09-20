@@ -10,7 +10,7 @@ name: uptime
 
 on:
     schedule:
-        - cron: "*/15 * * * *"
+        - cron: "7,16,38,53 * * * *" # off-peak minutes: GitHub drops or delays scheduled runs at :00/:15/:30/:45
     workflow_dispatch:
 
 permissions:
