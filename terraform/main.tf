@@ -30,6 +30,7 @@ provider "azurerm" {
     "Microsoft.ContainerService",    # AKS
     "Microsoft.OperationalInsights", # Log Analytics
     "Microsoft.Insights",            # Application Insights, availability tests, alerts
+    "Microsoft.Web",                 # Static Web Apps
   ]
 }
 

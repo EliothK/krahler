@@ -39,3 +39,8 @@ variable "tags" {
     managedBy = "terraform"
   }
 }
+
+variable "deploy_principal_id" {
+  description = "Object ID of the GitHub Actions OIDC service principal. Gets Contributor on the Static Web App resource group so deploy-swa can read the deployment token."
+  type        = string
+}

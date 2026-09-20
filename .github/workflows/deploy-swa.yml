@@ -1,0 +1,66 @@
+name: deploy-swa
+
+# Deploys the built site to Azure Static Web Apps. Manual trigger only while the AKS deploy is still the live path.
+# Once the SWA has been verified at its *.azurestaticapps.net URL and DNS has moved, switch the trigger to push on main and retire deploy.yml's AKS job.
+#
+# No long-lived deployment token is stored in GitHub: the job logs in with OIDC (same as deploy.yml) and reads the token from Azure at run time.
+# Needs repo variables SWA_NAME and SWA_RESOURCE_GROUP (Terraform outputs static_web_app_name / static_web_app_resource_group).
+# The OIDC service principal needs rights to list secrets on the Static Web App (Contributor on rg-portfolio-web is enough).
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: deploy-swa
+    cancel-in-progress: false
+
+env:
+    VITE_GITHUB_USER: ${{ vars.VITE_GITHUB_USER }}
+    VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        environment: production
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm test
+            - run: npm run build
+
+            - name: Authenticate to Azure
+              uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
+              with:
+                  client-id: ${{secrets.AZURE_CLIENT_ID}}
+                  tenant-id: ${{secrets.AZURE_TENANT_ID}}
+                  subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+            - name: Get deployment token
+              id: token
+              run: |
+                  token=$(az staticwebapp secrets list \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query properties.apiKey -o tsv)
+                  echo "::add-mask::$token"
+                  echo "token=$token" >> "$GITHUB_OUTPUT"
+
+            # dist/ already contains staticwebapp.config.json (copied from public/ by Vite).
+            - name: Deploy to Static Web Apps
+              env:
+                  SWA_CLI_DEPLOYMENT_TOKEN: ${{ steps.token.outputs.token }}
+              run: npx --yes @azure/static-web-apps-cli@2.0.10 deploy ./dist --env production
