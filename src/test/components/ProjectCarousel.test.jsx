@@ -33,9 +33,15 @@ describe("ProjectCarousel", () => {
     });
 
     it("shows a pending figure placeholder when figure is unset", () => {
-        render(<ProjectCarousel onOpen={() => {}} />);
-        const pending = PROJECTS.find((p) => !p.figure);
-        expect(pending).toBeDefined();
-        expect(screen.getByText(pending.figurePending)).toBeInTheDocument();
+        const project = PROJECTS[0];
+        const original = { figure: project.figure, figurePending: project.figurePending };
+        project.figure = null;
+        project.figurePending = "median error, pending";
+        try {
+            render(<ProjectCarousel onOpen={() => {}} />);
+            expect(screen.getByText("median error, pending")).toBeInTheDocument();
+        } finally {
+            Object.assign(project, original);
+        }
     });
 });

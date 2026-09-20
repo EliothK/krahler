@@ -1,7 +1,7 @@
 name: nightly-scale
 
 # Stops the AKS cluster overnight (10pm-5am America/Chicago) to save on compute cost, then starts it again in the morning.
-# The cluster (control plane, free tier) and everything in Terraform/k8s state stays put — only the node VMs are deallocated.
+# The cluster (control plane, free tier) and everything in Terraform/k8s state stays put - only the node VMs are deallocated.
 # (`az aks nodepool scale --node-count 0` is not an option: the default pool is the system pool, which must keep at least 1 node.)
 #
 # GitHub Actions cron is always UTC, and America/Chicago flips between CST (UTC-6) and CDT (UTC-5).

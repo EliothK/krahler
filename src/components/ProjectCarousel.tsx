@@ -57,7 +57,7 @@ function ProjectCarousel({ onOpen }: Props) {
             <div className="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-3">
                 <div>
                     <h2 id="projects-heading" className="mb-2">
-                        Five things I built
+                        Three things I built
                     </h2>
                     <p className="section-intro mb-0">
                         Open any one for the full write-up: what it is, the
