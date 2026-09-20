@@ -1,4 +1,5 @@
-import profilePic from "../assets/iNoWest.png";
+// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src in sync (security.conf, public/staticwebapp.config.json).
+const PROFILE_PIC = "https://avatars.githubusercontent.com/u/175250448?v=4&s=720";
 
 const GITHUB_USER = import.meta.env.VITE_GITHUB_USER || "EliothK";
 const CONTACT_EMAIL =
@@ -28,7 +29,7 @@ function ProfileCard() {
             <div className="profile-card p-4 p-lg-4">
                 <img
                     className="profile-photo mb-1"
-                    src={profilePic}
+                    src={PROFILE_PIC}
                     alt="Elioth Krahler"
                     width={360}
                     height={360}

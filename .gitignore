@@ -40,3 +40,5 @@ tfplan.out
 backend.hcl
 !*.tfvars.example
 !backend.hcl.example
+cost-analysis-meter-category.csv
+cost-analysis.csv
