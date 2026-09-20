@@ -24,3 +24,9 @@ output "static_web_app_default_hostname" {
   value       = azurerm_static_web_app.portfolio.default_host_name
   description = "Verify the site here (*.azurestaticapps.net) before pointing krahler.com's DNS at it."
 }
+
+output "apex_validation_token" {
+  value       = azurerm_static_web_app_custom_domain.apex.validation_token
+  sensitive   = true # the provider marks it sensitive; read it with `terraform output -raw apex_validation_token`
+  description = "Put this in a TXT record at the apex in Cloudflare. Empty once the domain has validated."
+}

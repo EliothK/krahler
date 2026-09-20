@@ -44,3 +44,9 @@ variable "deploy_principal_id" {
   description = "Object ID of the GitHub Actions OIDC service principal. Gets Contributor on the Static Web App resource group so deploy-swa can read the deployment token."
   type        = string
 }
+
+variable "domain" {
+  description = "Apex domain served by the Static Web App. www.<domain> is added as well."
+  type        = string
+  default     = "krahler.com"
+}

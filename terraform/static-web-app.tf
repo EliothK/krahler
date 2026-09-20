@@ -32,3 +32,24 @@ resource "azurerm_role_assignment" "deploy_swa" {
   role_definition_name = "Contributor"
   principal_id         = var.deploy_principal_id
 }
+
+# Custom domains. The two validation types behave differently, which fixes the order of operations at cutover:
+#
+# - Apex (krahler.com) must use dns-txt-token. Terraform returns right away with a token and does NOT wait for validation; Azure validates asynchronously once the TXT record exists.
+#   So this can be applied and fully validated (certificate included) BEFORE any traffic moves.
+#   The token exists only until the domain is validated, then it is cleared.
+# - www uses cname-delegation. Terraform polls until the CNAME already points at the Static Web App and blocks (30 min timeout) if it does not.
+#   So apply this only AFTER the CNAME exists in Cloudflare, i.e. at cutover, with a targeted apply.
+#
+# Both records must be DNS-only (grey cloud) in Cloudflare; a proxied record breaks validation.
+resource "azurerm_static_web_app_custom_domain" "apex" {
+  static_web_app_id = azurerm_static_web_app.portfolio.id
+  domain_name       = var.domain
+  validation_type   = "dns-txt-token"
+}
+
+resource "azurerm_static_web_app_custom_domain" "www" {
+  static_web_app_id = azurerm_static_web_app.portfolio.id
+  domain_name       = "www.${var.domain}"
+  validation_type   = "cname-delegation"
+}
