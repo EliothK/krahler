@@ -6,12 +6,29 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
+    ignore:
+      # Held back until the toolchain supports them: the build runs on Node 24, and the Babel and TypeScript majors break the React compiler plugin and the build.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@babel/core"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /lab # the AKS lab image
     schedule: { interval: weekly }
+    ignore:
+      - dependency-name: "node" # stay on the LTS line
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: terraform
     directory: /terraform # production site
     schedule: { interval: weekly }
   - package-ecosystem: terraform
     directory: /lab/terraform # AKS lab
     schedule: { interval: weekly }
+    ignore:
+      # The lab is torn down; provider majors change syntax and can't be tested without rebuilding it.
+      - dependency-name: "hashicorp/helm"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
