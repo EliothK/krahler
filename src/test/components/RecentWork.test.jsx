@@ -3,9 +3,22 @@ import { vi, beforeEach, afterEach } from "vitest";
 import RecentWork from "../../components/RecentWork";
 import * as activity from "../../scripts/activity";
 
+const repo = (over = {}) => ({
+    name: "repo-a",
+    description: "desc a",
+    url: "https://github.com/u/repo-a",
+    pushedAt: new Date().toISOString(),
+    language: "TypeScript",
+    ...over,
+});
+
 describe("RecentWork", () => {
+    let fetchSpy;
+
     beforeEach(() => {
-        vi.spyOn(activity, "fetchLiveActivity").mockResolvedValue(null);
+        fetchSpy = vi.fn();
+        vi.stubGlobal("fetch", fetchSpy);
+        vi.spyOn(activity, "fetchLiveActivity");
     });
 
     afterEach(() => {
@@ -13,32 +26,17 @@ describe("RecentWork", () => {
         vi.unstubAllGlobals();
     });
 
-    it("shows a loading state before any data resolves", () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(() => new Promise(() => {})),
-        );
+    it("shows a loading state before GitHub answers", () => {
+        activity.fetchLiveActivity.mockReturnValue(new Promise(() => {}));
         render(<RecentWork />);
         expect(screen.getByText(/Loading recent activity/)).toBeInTheDocument();
     });
 
-    it("renders repos from build-time data", async () => {
-        const data = {
+    it("renders repos from the live fetch and labels them as fresh", async () => {
+        activity.fetchLiveActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
-            repos: [
-                {
-                    name: "repo-a",
-                    description: "desc a",
-                    url: "https://github.com/u/repo-a",
-                    pushedAt: new Date().toISOString(),
-                    language: "TypeScript",
-                },
-            ],
-        };
-        vi.stubGlobal(
-            "fetch",
-            vi.fn().mockResolvedValue({ ok: true, json: async () => data }),
-        );
+            repos: [repo()],
+        });
 
         render(<RecentWork />);
 
@@ -46,11 +44,39 @@ describe("RecentWork", () => {
             expect(screen.getByText("repo-a")).toBeInTheDocument(),
         );
         expect(screen.getByText("desc a")).toBeInTheDocument();
-        expect(screen.getByText(/Written at build time/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Fetched from GitHub just now/),
+        ).toBeInTheDocument();
     });
 
-    it("shows an error message when the build-time fetch fails and live fetch yields nothing", async () => {
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    it("does not request a build-time activity.json", async () => {
+        activity.fetchLiveActivity.mockResolvedValue({
+            generatedAt: new Date().toISOString(),
+            repos: [repo()],
+        });
+
+        render(<RecentWork />);
+
+        await waitFor(() =>
+            expect(screen.getByText("repo-a")).toBeInTheDocument(),
+        );
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("shows an error message when the live fetch yields nothing", async () => {
+        activity.fetchLiveActivity.mockResolvedValue(null);
+
+        render(<RecentWork />);
+
+        await waitFor(() =>
+            expect(
+                screen.getByText(/GitHub isn't responding right now/),
+            ).toBeInTheDocument(),
+        );
+    });
+
+    it("shows an error message when the live fetch rejects", async () => {
+        activity.fetchLiveActivity.mockRejectedValue(new Error("boom"));
 
         render(<RecentWork />);
 
@@ -62,11 +88,10 @@ describe("RecentWork", () => {
     });
 
     it("shows an empty state when there are no recent repos", async () => {
-        const data = { generatedAt: new Date().toISOString(), repos: [] };
-        vi.stubGlobal(
-            "fetch",
-            vi.fn().mockResolvedValue({ ok: true, json: async () => data }),
-        );
+        activity.fetchLiveActivity.mockResolvedValue({
+            generatedAt: new Date().toISOString(),
+            repos: [],
+        });
 
         render(<RecentWork />);
 
@@ -75,29 +100,5 @@ describe("RecentWork", () => {
                 screen.getByText(/Nothing public in the last 90 days/),
             ).toBeInTheDocument(),
         );
-    });
-
-    it("renders live data and labels it as freshly fetched", async () => {
-        const liveData = {
-            generatedAt: new Date().toISOString(),
-            repos: [
-                {
-                    name: "live-repo",
-                    description: null,
-                    url: "https://github.com/u/live-repo",
-                    pushedAt: new Date().toISOString(),
-                    language: null,
-                },
-            ],
-        };
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
-        activity.fetchLiveActivity.mockResolvedValue(liveData);
-
-        render(<RecentWork />);
-
-        await waitFor(() =>
-            expect(screen.getByText("live-repo")).toBeInTheDocument(),
-        );
-        expect(screen.getByText(/Fetched from GitHub just now/)).toBeInTheDocument();
     });
 });

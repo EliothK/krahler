@@ -1,3 +1,5 @@
+# Production infrastructure for krahler.com: the Static Web App, its domains, the deploy role and the cost budget.
+# The AKS lab lives in ../lab/terraform with its own state, so a lab apply or destroy can never touch the public site.
 terraform {
   required_version = ">= 1.9"
 
@@ -6,16 +8,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 5.3.0"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.16"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.34"
-    }
   }
 
+  # Separate state from the lab. Pass the key at init time, e.g. -backend-config=backend.hcl (see backend.hcl.example): key = "site.tfstate".
   backend "azurerm" {
     use_azuread_auth = true
   }
@@ -26,84 +21,6 @@ provider "azurerm" {
 
   resource_provider_registrations = "none"
   resource_providers_to_register = [
-    "Microsoft.ContainerRegistry",
-    "Microsoft.ContainerService",    # AKS
-    "Microsoft.OperationalInsights", # Log Analytics
-    "Microsoft.Insights",            # Application Insights, availability tests, alerts
+    "Microsoft.Web", # Static Web Apps
   ]
-}
-
-resource "azurerm_resource_group" "portfolio" {
-  name     = "rg-${var.project}"
-  location = var.location
-  tags     = var.tags
-}
-
-resource "azurerm_container_registry" "portfolio" {
-  name                = var.acr_name
-  resource_group_name = azurerm_resource_group.portfolio.name
-  location            = azurerm_resource_group.portfolio.location
-  sku                 = "Basic"
-  admin_enabled       = false
-  tags                = var.tags
-}
-
-resource "azurerm_public_ip" "gateway" {
-  name                = "pip-${var.project}-gateway"
-  resource_group_name = "rg-tfstate" # deliberately NOT rg-portfolio
-  location            = var.location
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  tags                = var.tags
-
-  lifecycle {
-    prevent_destroy = true # survives destroy
-  }
-}
-
-output "gateway_ip" {
-  value = azurerm_public_ip.gateway.ip_address
-}
-
-resource "azurerm_role_assignment" "aks_pip" {
-  scope                = azurerm_public_ip.gateway.id
-  role_definition_name = "Network Contributor"
-  principal_id         = azurerm_kubernetes_cluster.portfolio.identity[0].principal_id
-}
-
-resource "azurerm_kubernetes_cluster" "portfolio" {
-  name                = "aks-${var.project}"
-  resource_group_name = azurerm_resource_group.portfolio.name
-  location            = azurerm_resource_group.portfolio.location
-  dns_prefix          = "aks-${var.project}"
-  sku_tier            = "Free"
-  tags                = var.tags
-
-  default_node_pool {
-    name                        = "default"
-    node_count                  = 1
-    vm_size                     = "Standard_D2as_v6"
-    os_disk_size_gb             = 32
-    temporary_name_for_rotation = "tmprot"
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  node_provisioning_profile {
-    mode = "Manual"
-  }
-
-  oms_agent {
-    log_analytics_workspace_id      = azurerm_log_analytics_workspace.portfolio.id
-    msi_auth_for_monitoring_enabled = true
-  }
-}
-
-resource "azurerm_role_assignment" "aks_acr_pull" {
-  scope                            = azurerm_container_registry.portfolio.id
-  role_definition_name             = "AcrPull"
-  principal_id                     = azurerm_kubernetes_cluster.portfolio.kubelet_identity[0].object_id
-  skip_service_principal_aad_check = true
 }

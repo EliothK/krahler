@@ -12,6 +12,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
+    // Live-site checks; run with `npm run smoke`, never as part of `npm test`.
+    exclude: ['**/node_modules/**', 'dist/**', 'smoke/**'],
   },
   css: {
     preprocessorOptions: {

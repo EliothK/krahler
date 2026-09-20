@@ -1,4 +1,5 @@
-import profilePic from "../assets/IandNoWest.webp";
+// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src (public/staticwebapp.config.json; lab/security.conf for the AKS lab) and the preload in index.html in sync.
+const PROFILE_PIC = "https://avatars.githubusercontent.com/u/175250448?v=4&s=320";
 
 const GITHUB_USER = import.meta.env.VITE_GITHUB_USER || "EliothK";
 const CONTACT_EMAIL =
@@ -18,20 +19,21 @@ const LINKS = [
     {
         href: "/build",
         label: "How this site gets deployed",
-        hint: "Actions -> Terraform -> AKS, with the build log",
+        hint: "From Kubernetes to static hosting, with the build log",
     },
 ];
 
 function ProfileCard() {
     return (
         <div className="profile-sticky">
-            <div className="profile-card p-3 p-lg-4">
+            <div className="profile-card p-4 p-lg-4">
                 <img
-                    className="profile-photo mb-3"
-                    src={profilePic}
+                    className="profile-photo mb-1"
+                    src={PROFILE_PIC}
+                    fetchPriority="high"
                     alt="Elioth Krahler"
-                    width={130}
-                    height={130}
+                    width={360}
+                    height={360}
                 />
 
                 <h1 className="mb-2">Elioth Krahler</h1>
@@ -48,7 +50,15 @@ function ProfileCard() {
                 <ul className="profile-links rule-top">
                     {LINKS.map((l) => (
                         <li key={l.href}>
-                            <a href={l.href}>
+                            <a
+                                href={l.href}
+                                {...(l.href.startsWith("mailto:")
+                                    ? {}
+                                    : {
+                                          target: "_blank",
+                                          rel: "noopener noreferrer",
+                                      })}
+                            >
                                 {l.label}
                                 <span className="hint">{l.hint}</span>
                             </a>

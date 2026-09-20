@@ -1,5 +1,5 @@
-data "azurerm_subscription" "current" {}
-
+# Everything here lives in rg-portfolio and goes away with the lab.
+# The subscription budget was moved to the site root (terraform/budget.tf) so cost alerts survive a lab teardown.
 resource "azurerm_log_analytics_workspace" "portfolio" {
   name                = "log-${var.project}"
   resource_group_name = azurerm_resource_group.portfolio.name
@@ -114,30 +114,4 @@ resource "azurerm_monitor_data_collection_rule_association" "container_insights"
   name                    = "ContainerInsightsExtension"
   target_resource_id      = azurerm_kubernetes_cluster.portfolio.id
   data_collection_rule_id = azurerm_monitor_data_collection_rule.container_insights.id
-}
-
-resource "azurerm_consumption_budget_subscription" "portfolio" {
-  name            = "budget-${var.project}"
-  subscription_id = data.azurerm_subscription.current.id
-  amount          = 50
-  time_grain      = "Monthly"
-
-  time_period {
-    start_date = "2026-09-01T00:00:00Z" # must be the first of a month
-  }
-
-  notification {
-    enabled        = true
-    threshold      = 80 # percent
-    operator       = "GreaterThan"
-    contact_emails = [var.alert_email]
-  }
-
-  notification {
-    enabled        = true
-    threshold      = 100
-    operator       = "GreaterThan"
-    threshold_type = "Forecasted" # warns before you get there
-    contact_emails = [var.alert_email]
-  }
 }

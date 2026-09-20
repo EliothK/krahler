@@ -24,4 +24,12 @@ describe("ProfileCard", () => {
         render(<ProfileCard />);
         expect(screen.getByAltText("Elioth Krahler")).toBeInTheDocument();
     });
+
+    it("loads the photo from GitHub avatars, not a bundled file", () => {
+        render(<ProfileCard />);
+        expect(screen.getByAltText("Elioth Krahler")).toHaveAttribute(
+            "src",
+            expect.stringMatching(/^https:\/\/avatars\.githubusercontent\.com\//),
+        );
+    });
 });

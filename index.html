@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The profile photo is rendered by React, so without these the browser only finds it after the JS bundle runs. Keep the URL in sync with PROFILE_PIC in ProfileCard.tsx. -->
+    <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+    <link
+      rel="preload"
+      as="image"
+      href="https://avatars.githubusercontent.com/u/175250448?v=4&s=320"
+      fetchpriority="high"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Krahler</title>
     <meta

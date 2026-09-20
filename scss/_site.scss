@@ -81,7 +81,9 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     border-radius: 6px;
 }
 .profile-photo{
-    width: 88px; height: 88px;
+    display: block;
+    width: 100%; max-width: 240px; height: auto;
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid var(--rule);
