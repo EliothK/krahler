@@ -41,6 +41,8 @@ jobs:
                   cache: "npm"
 
             - run: npm ci
+            - name: Audit production dependencies
+              run: npm audit --omit=dev --audit-level=high
             - run: npm run lint
             - run: npm test
             - run: npm run build
@@ -67,3 +69,26 @@ jobs:
               env:
                   SWA_CLI_DEPLOYMENT_TOKEN: ${{ steps.token.outputs.token }}
               run: npx --yes @azure/static-web-apps-cli@2.0.10 deploy ./dist --env production
+
+            - name: Find the deployed URL
+              id: site
+              run: |
+                  host=$(az staticwebapp show \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query defaultHostname -o tsv)
+                  echo "url=https://$host" >> "$GITHUB_OUTPUT"
+
+            # A fresh deploy can take a few seconds to reach every edge, so wait for the page rather than failing the checks on a race.
+            - name: Wait for the new version to answer
+              run: curl -sf --retry 10 --retry-delay 5 --retry-all-errors -o /dev/null "${{ steps.site.outputs.url }}/"
+
+            - name: Smoke test the live site
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run smoke
+
+            - name: Lighthouse thresholds
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run lighthouse

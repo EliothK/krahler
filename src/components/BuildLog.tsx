@@ -119,9 +119,11 @@ export default function BuildLog() {
         <header className="pb-4">
           <h1 className="lede mb-3">Build log</h1>
           <p className="quiet lede-sub">
-            How this site ships: GitHub Actions deploys the app to AKS;
-            Terraform is validated in CI and applied by hand. Includes what
-            broke along the way. Numbers come from real runs, not estimates.
+            How this site ships: GitHub Actions deploys it to Azure Static Web
+            Apps. It ran on Kubernetes (AKS) first, and most of this log is
+            that chapter: what I built, what broke, and what I learned before
+            moving it to static hosting. The AKS-era numbers come from real
+            runs, not estimates.
             Source:{" "}
             <a
               href={`${REPO}/blob/main/.github/workflows/deploy.yml`}
@@ -142,12 +144,62 @@ export default function BuildLog() {
           </p>
         </header>
 
+        <section className="band" aria-labelledby="moved-heading">
+          <h2 id="moved-heading" className="mb-2">
+            Why it moved off AKS
+          </h2>
+          <p className="section-intro mb-3">
+            The Kubernetes setup did what I built it to do: prove a whole
+            delivery path, end to end, with no stored secrets. It was also more
+            than a one-page static site needs, and it cost real money to keep
+            up.
+          </p>
+          <ul>
+            <li>
+              Stopping the node overnight still left the load balancer, public
+              IP and container registry billing around the clock, about a
+              dollar a day on the Azure cost export, before the node itself.
+            </li>
+            <li>
+              The site was offline from 10pm to 5am Central by design, and the
+              availability test reported that as a failure every night.
+            </li>
+            <li>
+              Static Web Apps on the free tier costs nothing, serves from a
+              CDN, and terminates TLS for me. Lighthouse on the default URL,
+              mobile emulation: performance 0.91, accessibility, best
+              practices and SEO all 1.00. Desktop performance 0.99.
+            </li>
+            <li>
+              I also want a real backend on this site, and a serverless API
+              behind static hosting is the cheaper way to get one.
+            </li>
+          </ul>
+          <h3>What changed in the pipeline</h3>
+          <ul>
+            <li>
+              Trivy scanning and build provenance were about the container
+              image, so they went with it. The checks that replace them run on
+              every change: dependency audit, lint, unit tests, a build, and
+              Terraform validation. After each deploy, a smoke test checks the
+              live site&apos;s status codes, security headers and caching, and a
+              Lighthouse run has to clear score thresholds.
+            </li>
+            <li>
+              The Kubernetes and Terraform setup was not thrown away. It is
+              kept in the repo as a lab I can bring up and tear down on demand,
+              with its own Terraform state, so it can never take the public
+              site down.
+            </li>
+          </ul>
+        </section>
+
         <section className="band" aria-labelledby="numbers-heading">
           <h2 id="numbers-heading" className="mb-2">
             Numbers
           </h2>
           <p className="section-intro mb-3">
-            From a workflow_dispatch run on 2026-09-17.
+            AKS-era pipeline, from a workflow_dispatch run on 2026-09-17.
           </p>
           <dl>
             {NUMBERS.map(([k, v]) => (
@@ -210,8 +262,9 @@ export default function BuildLog() {
               a free fix.
             </li>
             <li>
-              The nightly stop makes the site unavailable overnight by design,
-              which the availability test will report as a failure.
+              The nightly stop made the site unavailable overnight by design,
+              which the availability test reported as a failure every night.
+              That went away with the move to Static Web Apps.
             </li>
             <li>
               Nothing alerts on someone scaling the Deployment to zero, other

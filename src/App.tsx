@@ -56,9 +56,11 @@ export default function App() {
 
                         <footer>
                             <p className="mb-0">
-                                Built with React and Vite, containerized with
-                                Podman, provisioned with Terraform, deployed to
-                                AKS by GitHub Actions on every push to main.
+                                Built with React and Vite, provisioned with
+                                Terraform, deployed to Azure Static Web Apps by
+                                GitHub Actions on every push to main. It ran on
+                                Kubernetes first; the{" "}
+                                <a href="/build">build log</a> covers both.
                             </p>
                         </footer>
                     </div>

@@ -19,7 +19,7 @@ const LINKS = [
     {
         href: "/build",
         label: "How this site gets deployed",
-        hint: "Actions -> Terraform -> AKS, with the build log",
+        hint: "From Kubernetes to static hosting, with the build log",
     },
 ];
 
