@@ -21,8 +21,14 @@ resource "azurerm_container_app_environment" "api" {
   name                       = "cae-${var.project}-api"
   resource_group_name        = azurerm_resource_group.api.name
   location                   = azurerm_resource_group.api.location
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.api.id
   tags                       = var.tags
+
+  lifecycle {
+    # Azure adds a "Consumption" workload profile on its own. It's what this environment runs on, so don't let Terraform try to remove it.
+    ignore_changes = [workload_profile]
+  }
 }
 
 resource "azurerm_container_app" "api" {
@@ -74,6 +80,7 @@ resource "azurerm_container_app" "api" {
   lifecycle {
     # The pipeline rolls out new images (and sets API_VERSION) with `az containerapp update`. Without this, every plan would try to put the bootstrap image back.
     ignore_changes = [
+      workload_profile_name, # Azure fills in "Consumption" on its own
       template[0].container[0].image,
       template[0].container[0].env,
     ]
@@ -87,9 +94,25 @@ resource "azurerm_role_assignment" "deploy_api" {
   principal_id         = var.deploy_principal_id
 }
 
-# Custom domain, in two steps because Azure validates against live DNS:
-#   1. apply with enable_custom_domain = false, then add the two Cloudflare records shown in the outputs (DNS only, not proxied);
-#   2. apply with enable_custom_domain = true, which issues a free managed certificate and binds it.
+# Custom domain. Azure validates against live DNS, so the two Cloudflare records in the outputs (CNAME api, TXT asuid.api, DNS only) must exist first.
+# It also needs the hostname on the app BEFORE it will issue a certificate, while binding the certificate needs the certificate to exist.
+# One Terraform resource can't express that order without a dependency cycle, so it's split:
+#   1. the hostname is added here, unbound;
+#   2. the free managed certificate is issued here, after the hostname exists;
+#   3. the bind is one Azure CLI command, run once:
+#        az containerapp hostname bind -g rg-portfolio-api -n ca-portfolio-api --hostname api.krahler.com --environment cae-portfolio-api --certificate cert-api-krahler-com
+#      Terraform ignores the binding fields so it never tries to undo that.
+resource "azurerm_container_app_custom_domain" "api" {
+  count = var.enable_custom_domain ? 1 : 0
+
+  name             = var.domain
+  container_app_id = azurerm_container_app.api.id
+
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
+}
+
 resource "azurerm_container_app_environment_managed_certificate" "api" {
   count = var.enable_custom_domain ? 1 : 0
 
@@ -98,13 +121,6 @@ resource "azurerm_container_app_environment_managed_certificate" "api" {
   subject_name                 = var.domain
   domain_control_validation    = "CNAME"
   tags                         = var.tags
-}
 
-resource "azurerm_container_app_custom_domain" "api" {
-  count = var.enable_custom_domain ? 1 : 0
-
-  name                                     = var.domain
-  container_app_id                         = azurerm_container_app.api.id
-  container_app_environment_certificate_id = azurerm_container_app_environment_managed_certificate.api[0].id
-  certificate_binding_type                 = "SniEnabled"
+  depends_on = [azurerm_container_app_custom_domain.api]
 }
