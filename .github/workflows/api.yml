@@ -1,0 +1,41 @@
+name: api
+
+# Tests the Spring Boot API and checks that its container image builds. Deployment comes later, once the Container Apps infrastructure exists.
+# Only runs when the API changes, so it is not a required status check on main.
+
+on:
+    push:
+        branches: [main]
+        paths: ["api/**", ".github/workflows/api.yml"]
+    pull_request:
+        paths: ["api/**", ".github/workflows/api.yml"]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: api-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        defaults:
+            run:
+                working-directory: api
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+              with:
+                  distribution: temurin
+                  java-version: "25"
+                  cache: maven
+
+            - name: Unit and integration tests
+              run: mvn -B verify
+
+            - name: Build the container image
+              run: docker build -t krahler-api:ci .
