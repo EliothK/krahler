@@ -39,3 +39,29 @@ jobs:
 
             - name: Build the container image
               run: docker build -t krahler-api:ci .
+
+    # Publishes the image the Container App runs, to GitHub's registry (free for a public repo, so no Azure registry is needed).
+    # The label links the package to this repo. The package must be public so Azure can pull it without a credential.
+    publish:
+        needs: test
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - name: Log in to ghcr.io
+              run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            - name: Build and push
+              run: |
+                  image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/krahler-api"
+                  docker build \
+                    --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+                    --label "org.opencontainers.image.revision=${{ github.sha }}" \
+                    -t "$image:${{ github.sha }}" -t "$image:latest" api
+                  docker push "$image:${{ github.sha }}"
+                  docker push "$image:latest"

@@ -67,6 +67,7 @@ jobs:
             matrix:
                 include:
                     - { name: site, dir: terraform, key: site.tfstate }
+                    - { name: api, dir: api/terraform, key: api.tfstate }
                     - { name: lab, dir: lab/terraform, key: "${{ vars.TFSTATE_KEY }}" }
         defaults:
             run:
@@ -111,7 +112,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 2
         steps:
-            - name: Both Terraform roots validated
+            - name: All Terraform roots validated
               run: |
                   echo "terraform-validate: ${{ needs.terraform-validate.result }}"
                   [ "${{ needs.terraform-validate.result }}" = "success" ]
