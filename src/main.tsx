@@ -1,20 +1,20 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import "../scss/custom.scss";
-import App from "./App.tsx";
-import BuildLog from "./components/BuildLog.tsx";
+import Routes from "./Routes.tsx";
 
 import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-mono/400.css";
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root")!;
+const app = (
     <StrictMode>
-        {window.location.pathname.replace(/\/$/, "") === "/build" ? (
-            <BuildLog />
-        ) : (
-            <App />
-        )}
-    </StrictMode>,
+        <Routes path={window.location.pathname} />
+    </StrictMode>
 );
+
+// The production build ships prerendered HTML, so attach to it. `npm run dev` serves an empty root, so render from scratch.
+if (root.hasChildNodes()) hydrateRoot(root, app);
+else createRoot(root).render(app);

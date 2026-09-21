@@ -66,7 +66,22 @@ describe(`smoke: ${BASE}`, () => {
             expect(res.headers.get("content-type")).toContain("text/html");
         });
 
-        it.each(["/robots.txt", "/favicon.svg", "/og.png"])(
+        // Crawlers, link unfurlers and résumé parsers don't run JavaScript, so the content has to be in the HTML itself.
+        it("prerenders the home page content into the HTML", () => {
+            expect(indexHtml).toContain("Elioth Krahler");
+            for (const heading of ["Skills", "Experience", "Certifications"]) {
+                expect(indexHtml).toMatch(new RegExp(`<h2[^>]*>${heading}<`));
+            }
+            expect(indexHtml).toContain('"@type": "Person"');
+        });
+
+        it("prerenders the build log with its own title", async () => {
+            const html = await (await get("/build")).text();
+            expect(html).toContain("<title>Build log - Elioth Krahler</title>");
+            expect(html).toContain("Why it moved off AKS");
+        });
+
+        it.each(["/robots.txt", "/sitemap.xml", "/favicon.svg", "/og.png"])(
             "serves %s",
             async (path) => {
                 const res = await get(path);
