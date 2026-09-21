@@ -34,9 +34,9 @@ variable "domain" {
 }
 
 variable "enable_custom_domain" {
-  description = "Turn on once the DNS records exist (see the outputs). Adding the domain before Cloudflare has the CNAME and TXT records makes Azure's validation fail."
+  description = "Needs the DNS records from the outputs to exist first (CNAME api, TXT asuid.api); without them Azure's validation fails. Set to false only when rebuilding from scratch."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "tags" {
