@@ -1,5 +1,5 @@
 # Build context is api/:  podman build -t krahler-api api
-FROM docker.io/library/maven:3.9-eclipse-temurin-25 AS build
+FROM docker.io/library/maven:3-eclipse-temurin-26 AS build
 WORKDIR /src
 # Dependencies first, so editing source doesn't re-download them.
 COPY pom.xml .
