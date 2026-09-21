@@ -179,7 +179,8 @@ jobs:
             - name: Smoke test the live site
               env:
                   SMOKE_URL: ${{ steps.site.outputs.url }}
-              run: npm run smoke
+              # The CDN can serve the previous version for a few seconds after the deploy finishes, so retry once before failing.
+              run: npm run smoke || { sleep 45; npm run smoke; }
 
             - name: Lighthouse thresholds
               env:
