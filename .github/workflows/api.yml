@@ -1,6 +1,6 @@
 name: api
 
-# Tests the Spring Boot API and checks that its container image builds. Deployment comes later, once the Container Apps infrastructure exists.
+# Tests the Spring Boot API, publishes its container image to ghcr.io, and rolls it out to the Container App behind api.krahler.com.
 # Only runs when the API changes, so it is not a required status check on main.
 
 on:
@@ -65,3 +65,46 @@ jobs:
                     -t "$image:${{ github.sha }}" -t "$image:latest" api
                   docker push "$image:${{ github.sha }}"
                   docker push "$image:latest"
+
+    # Rolls the new image out to the Container App, then proves the live API is running this commit.
+    # Uses the same OIDC login as the site: no stored Azure credential.
+    deploy:
+        needs: publish
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: production
+        permissions:
+            id-token: write
+            contents: read
+        env:
+            RESOURCE_GROUP: rg-portfolio-api # names, not secrets; they match api/terraform
+            APP_NAME: ca-portfolio-api
+            API_URL: https://api.krahler.com
+        steps:
+            - name: Authenticate to Azure
+              uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            # A new revision starts alongside the old one, and traffic moves once it passes its readiness probe.
+            - name: Roll out the image
+              run: |
+                  az containerapp update \
+                    --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
+                    --image "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/krahler-api:${{ github.sha }}" \
+                    --set-env-vars "API_VERSION=${{ github.sha }}"
+
+            # /api/status reports the version it was started with, so this fails if the old revision is still serving.
+            # The first call can take a while: the app may scale up from zero and start a JVM.
+            - name: Wait for the new version to answer
+              run: |
+                  for i in $(seq 1 18); do
+                    version=$(curl -sf -m 30 "$API_URL/api/status" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')
+                    echo "attempt $i: version=${version:-none}"
+                    [ "$version" = "${{ github.sha }}" ] && exit 0
+                    sleep 10
+                  done
+                  echo "the API never reported ${{ github.sha }}" >&2
+                  exit 1
