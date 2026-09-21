@@ -1,7 +1,7 @@
 # AKS lab image. The build context is the REPO ROOT, not lab/ (it needs the site source), so build with:
 #   podman build -f lab/Dockerfile -t portfolio .
 # Stage 1: build
-FROM docker.io/library/node:24-alpine AS build
+FROM docker.io/library/node:26-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
