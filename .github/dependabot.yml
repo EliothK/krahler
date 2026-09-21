@@ -30,6 +30,9 @@ updates:
     directory: /terraform # production site
     schedule: { interval: weekly }
   - package-ecosystem: terraform
+    directory: /api/terraform # the API's Container App
+    schedule: { interval: weekly }
+  - package-ecosystem: terraform
     directory: /lab/terraform # AKS lab
     schedule: { interval: weekly }
     ignore:

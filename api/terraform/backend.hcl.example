@@ -1,0 +1,4 @@
+resource_group_name  = "rg-tfstate"
+storage_account_name = "sttfstate"
+container_name       = "tfstate"
+key                  = "api.tfstate" # the site uses site.tfstate and the lab portfolio.tfstate, so no two roots share state
