@@ -4,9 +4,16 @@ import {
   GITHUB_USER,
   type Activity,
 } from "../scripts/activity";
+import { SNAPSHOT } from "../scripts/snapshot";
 
-export default function RecentWork() {
-  const [data, setData] = useState<Activity | null>(null);
+// `snapshot` is what GitHub said at build time. It's shown straight away (and is in the prerendered HTML), then replaced by the live answer, and it stays on screen if the live request fails.
+export default function RecentWork({
+  snapshot = SNAPSHOT,
+}: {
+  snapshot?: Activity | null;
+}) {
+  const [data, setData] = useState<Activity | null>(snapshot);
+  const [live, setLive] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -15,8 +22,10 @@ export default function RecentWork() {
     fetchLiveActivity()
       .then((d) => {
         if (cancelled) return;
-        if (d) setData(d);
-        else setFailed(true);
+        if (d) {
+          setData(d);
+          setLive(true);
+        } else setFailed(true);
       })
       .catch(() => !cancelled && setFailed(true));
     return () => {
@@ -30,7 +39,8 @@ export default function RecentWork() {
         What I'm working on now
       </h2>
       <p className="section-intro mb-4">
-        Pulled from GitHub live, in your browser, each time the page loads.
+        Pulled from GitHub in your browser each time the page loads, with the
+        last build's copy as a fallback.
       </p>
 
       <ul className="work-list">
@@ -90,7 +100,17 @@ export default function RecentWork() {
         ))}
       </ul>
 
-      {data && <p className="freshness">Fetched from GitHub just now.</p>}
+      {data && live && (
+        <p className="freshness">Fetched from GitHub just now.</p>
+      )}
+      {data && !live && (
+        <p className="freshness">
+          {failed
+            ? "GitHub's live data isn't available right now. "
+            : ""}
+          Snapshot from {data.generatedAt.slice(0, 10)}.
+        </p>
+      )}
     </section>
   );
 }

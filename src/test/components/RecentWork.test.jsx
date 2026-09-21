@@ -28,7 +28,7 @@ describe("RecentWork", () => {
 
     it("shows a loading state before GitHub answers", () => {
         activity.fetchLiveActivity.mockReturnValue(new Promise(() => {}));
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
         expect(screen.getByText(/Loading recent activity/)).toBeInTheDocument();
     });
 
@@ -38,7 +38,7 @@ describe("RecentWork", () => {
             repos: [repo()],
         });
 
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
 
         await waitFor(() =>
             expect(screen.getByText("repo-a")).toBeInTheDocument(),
@@ -55,7 +55,7 @@ describe("RecentWork", () => {
             repos: [repo()],
         });
 
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
 
         await waitFor(() =>
             expect(screen.getByText("repo-a")).toBeInTheDocument(),
@@ -66,7 +66,7 @@ describe("RecentWork", () => {
     it("shows an error message when the live fetch yields nothing", async () => {
         activity.fetchLiveActivity.mockResolvedValue(null);
 
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
 
         await waitFor(() =>
             expect(
@@ -78,7 +78,7 @@ describe("RecentWork", () => {
     it("shows an error message when the live fetch rejects", async () => {
         activity.fetchLiveActivity.mockRejectedValue(new Error("boom"));
 
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
 
         await waitFor(() =>
             expect(
@@ -87,13 +87,66 @@ describe("RecentWork", () => {
         );
     });
 
+    it("shows the build-time snapshot immediately instead of a spinner", () => {
+        activity.fetchLiveActivity.mockReturnValue(new Promise(() => {}));
+        render(
+            <RecentWork
+                snapshot={{
+                    generatedAt: "2026-09-20T00:00:00.000Z",
+                    repos: [repo({ name: "snap-repo" })],
+                }}
+            />,
+        );
+        expect(screen.getByText("snap-repo")).toBeInTheDocument();
+        expect(screen.queryByText(/Loading recent activity/)).toBeNull();
+        expect(screen.getByText(/Snapshot from 2026-09-20/)).toBeInTheDocument();
+    });
+
+    it("keeps the snapshot and says so when the live fetch fails", async () => {
+        activity.fetchLiveActivity.mockResolvedValue(null);
+        render(
+            <RecentWork
+                snapshot={{
+                    generatedAt: "2026-09-20T00:00:00.000Z",
+                    repos: [repo({ name: "snap-repo" })],
+                }}
+            />,
+        );
+        await waitFor(() =>
+            expect(
+                screen.getByText(/live data isn't available right now/),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.getByText("snap-repo")).toBeInTheDocument();
+    });
+
+    it("replaces the snapshot with live data when it arrives", async () => {
+        activity.fetchLiveActivity.mockResolvedValue({
+            generatedAt: new Date().toISOString(),
+            repos: [repo({ name: "live-repo" })],
+        });
+        render(
+            <RecentWork
+                snapshot={{
+                    generatedAt: "2026-09-20T00:00:00.000Z",
+                    repos: [repo({ name: "snap-repo" })],
+                }}
+            />,
+        );
+        await waitFor(() =>
+            expect(screen.getByText("live-repo")).toBeInTheDocument(),
+        );
+        expect(screen.queryByText("snap-repo")).toBeNull();
+        expect(screen.getByText(/Fetched from GitHub just now/)).toBeInTheDocument();
+    });
+
     it("shows an empty state when there are no recent repos", async () => {
         activity.fetchLiveActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
             repos: [],
         });
 
-        render(<RecentWork />);
+        render(<RecentWork snapshot={null} />);
 
         await waitFor(() =>
             expect(

@@ -17,7 +17,7 @@ describe("Skills", () => {
         expect(
             screen.getByText("Coursework and certified fundamentals"),
         ).toBeInTheDocument();
-        expect(screen.getByText("Added during this project")).toBeInTheDocument();
+        expect(screen.getByText("Learned by building this site")).toBeInTheDocument();
     });
 
     it("renders skills from each tier", () => {
@@ -26,10 +26,22 @@ describe("Skills", () => {
         expect(screen.getByText("Kubernetes / AKS")).toBeInTheDocument();
     });
 
-    it("renders the caveat only on the tier that has one", () => {
+    it("links each newer skill to a file in the repo", () => {
         render(<Skills />);
-        expect(
-            screen.getByText(/These are four weeks old/),
-        ).toBeInTheDocument();
+        const link = screen.getByRole("link", { name: "GitHub Actions" });
+        expect(link.getAttribute("href")).toBe(
+            "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy.yml",
+        );
+        for (const name of ["Terraform", "Kubernetes / AKS", "Azure Monitor"]) {
+            expect(
+                screen.getByRole("link", { name }).getAttribute("href"),
+            ).toContain("https://github.com/EliothK/krahler/");
+        }
+    });
+
+    it("renders the caveat only on the tier that has one, without a stale age", () => {
+        render(<Skills />);
+        expect(screen.getByText(/newer to me than the rest/)).toBeInTheDocument();
+        expect(screen.queryByText(/weeks old/)).toBeNull();
     });
 });

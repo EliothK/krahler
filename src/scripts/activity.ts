@@ -1,4 +1,5 @@
-export const GITHUB_USER = import.meta.env.VITE_GITHUB_USER || "EliothK";
+// `env?.` because scripts/activity-snapshot.mjs imports this file under plain Node, where import.meta.env doesn't exist.
+export const GITHUB_USER = import.meta.env?.VITE_GITHUB_USER || "EliothK";
 
 export type RepoActivity = {
     name: string;
@@ -17,13 +18,17 @@ export type Activity = {
 const API = "https://api.github.com";
 const HEADERS = { Accept: "application/vnd.github+json"};
 
-const DEFAULT_LIMIT = Number(import.meta.env.VITE_ACTIVITY_LIMIT ?? 5);
+const DEFAULT_LIMIT = Number(import.meta.env?.VITE_ACTIVITY_LIMIT ?? 5);
+// Without a timeout a stalled request would leave the page on "Loading" indefinitely.
+const TIMEOUT_MS = 8000;
 
-export async function fetchLiveActivity(limit = DEFAULT_LIMIT): Promise<Activity | null> {
+// `token` is only passed by the build-time snapshot, where it lifts the unauthenticated rate limit. Never ship one to the browser.
+export async function fetchLiveActivity(limit = DEFAULT_LIMIT, token?: string): Promise<Activity | null> {
+    const headers = token ? { ...HEADERS, Authorization: `Bearer ${token}` } : HEADERS;
     try {
         const reposRes = await fetch(
             `${API}/users/${GITHUB_USER}/repos?sort=pushed&direction=desc&per_page=30`,
-            {headers: HEADERS},
+            {headers, signal: AbortSignal.timeout(TIMEOUT_MS)},
         );
         if (!reposRes.ok) return null;
 
@@ -51,7 +56,7 @@ export async function fetchLiveActivity(limit = DEFAULT_LIMIT): Promise<Activity
         try {
             const evRes = await fetch(
                 `${API}/users/${GITHUB_USER}/events/public?per_page=100`,
-                {headers: HEADERS},
+                {headers, signal: AbortSignal.timeout(TIMEOUT_MS)},
             );
             if (evRes.ok){
                 const counts = countPushes(await evRes.json());

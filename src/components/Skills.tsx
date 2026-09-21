@@ -1,7 +1,12 @@
+const REPO = "https://github.com/EliothK/krahler";
+
+// A skill is either a plain name or a name with a link to the file in this repo that shows it.
+type Skill = string | { name: string; href: string };
+
 const TIERS: {
     heading: string;
     caveat?: string;
-    skills: string[];
+    skills: Skill[];
 }[] = [
     {
         heading: "Built production or graded work with",
@@ -40,15 +45,31 @@ const TIERS: {
         ],
     },
     {
-        heading: "Added during this project",
+        heading: "Learned by building this site",
         caveat:
-            "These are four weeks old. I'm listing them separately because the difference between shipped and studied is worth being precise about.",
+            "These are newer to me than the rest, so they're listed apart. Each one links to the file in this repo that shows it, so you can judge the work instead of taking my word.",
         skills: [
-            "GitHub Actions",
-            "Terraform",
-            "Kubernetes / AKS",
-            "React",
-            "Azure Monitor",
+            {
+                name: "GitHub Actions",
+                href: `${REPO}/blob/main/.github/workflows/deploy.yml`,
+            },
+            {
+                name: "Terraform",
+                href: `${REPO}/blob/main/terraform/static-web-app.tf`,
+            },
+            {
+                name: "Azure Static Web Apps",
+                href: `${REPO}/blob/main/public/staticwebapp.config.json`,
+            },
+            {
+                name: "Kubernetes / AKS",
+                href: `${REPO}/tree/main/lab/k8s`,
+            },
+            {
+                name: "Azure Monitor",
+                href: `${REPO}/blob/main/lab/terraform/monitoring.tf`,
+            },
+            { name: "React", href: `${REPO}/blob/main/src/App.tsx` },
         ],
     },
 ];
@@ -68,9 +89,21 @@ export default function Skills() {
                 <div className="tier" key={tier.heading}>
                     <h3>{tier.heading}</h3>
                     <ul>
-                        {tier.skills.map((s) => (
-                            <li key={s}>{s}</li>
-                        ))}
+                        {tier.skills.map((s) =>
+                            typeof s === "string" ? (
+                                <li key={s}>{s}</li>
+                            ) : (
+                                <li key={s.name}>
+                                    <a
+                                        href={s.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        {s.name}
+                                    </a>
+                                </li>
+                            ),
+                        )}
                     </ul>
                     {tier.caveat && <p className="caveat mb-0">{tier.caveat}</p>}
                 </div>

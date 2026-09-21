@@ -46,6 +46,8 @@ jobs:
             - run: npm run lint
             - run: npm test
             - run: npm run build
+              env:
+                  GITHUB_TOKEN: ${{ github.token }} # lifts the rate limit for the build-time activity snapshot
 
             # The deploy job ships exactly this build, so what is deployed is what was tested.
             - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
