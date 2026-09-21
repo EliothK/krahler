@@ -47,6 +47,9 @@ function ProfileCard() {
                     <span className="status-dot" aria-hidden="true" />
                     Open to DevOps, Fullstack, and backend roles
                 </p>
+                <p className="profile-blurb quiet mb-3">
+                    Looking for remote work, and open to relocating.
+                </p>
                 <ul className="profile-links rule-top">
                     {LINKS.map((l) => (
                         <li key={l.href}>
