@@ -1,4 +1,5 @@
-import { API_BASE, COLD_START_TIMEOUT_MS } from "./api";
+// Explicit extension: scripts/activity-snapshot.mjs imports this file under plain Node (with its built-in TypeScript stripping), which needs it, unlike Vite which resolves either way.
+import { API_BASE, COLD_START_TIMEOUT_MS } from "./api.ts";
 
 // `env?.` because scripts/activity-snapshot.mjs imports this file under plain Node, where import.meta.env doesn't exist.
 export const GITHUB_USER = import.meta.env?.VITE_GITHUB_USER || "EliothK";
