@@ -58,9 +58,11 @@ class ContactController {
         if (!limiter.tryAcquire(clientKey(http))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "3600").build();
         }
+        // Sweep any previously-failed sends first: this is the only place retries happen (see retryUnemailed()'s comment for why there's no background schedule), so a new submission is also the trigger that gives an old one another chance.
+        retryUnemailed();
         // Stored first: whatever happens to the email next, the message itself is now durable.
         var saved = messages.save(new ContactMessage(request.name(), request.email(), request.message(), Instant.now(clock)));
-        // A failed send is logged, not retried inline: retryUnemailed() picks it up on its own schedule, and the sender already sees this as accepted either way.
+        // A failed send is logged, not retried inline: it waits for the next contact() call (this one or a future one) to sweep it, and the sender already sees this as accepted either way.
         try {
             notify(saved);
             saved.markEmailed();
@@ -71,8 +73,12 @@ class ContactController {
         return ResponseEntity.accepted().build();
     }
 
-    // Catches transient failures (an expired app password, Gmail throttling) that a plain retry-on-submit can't: the sender is long gone by the time this runs, but the message they wrote isn't.
-    @Scheduled(fixedRate = 900_000)
+    // Deliberately NOT @Scheduled.
+    // The API is scale-to-zero, and the site's own uptime check pings it roughly every 15 minutes, which is often enough to cold-start a fresh replica but not often enough to keep one alive continuously (Container Apps' default 300s idle cooldown is shorter than the gap between pings).
+    // Spring's fixedRate has no initial delay, so a scheduled version of this ran on nearly every single cold start regardless of the interval configured — and since it queried the database every time, Azure SQL's 60-minute auto-pause could never
+    // accumulate 60 idle minutes and the database ran (and billed) continuously, 24/7, instead of mostly-paused.
+    // Measured cost from this: roughly $3.90/day in vCore charges alone.
+    // Tying the// retry to real contact-form submissions instead means the database is only woken by an actual visitor, which is exactly when it needs to be awake anyway to store their message.
     void retryUnemailed() {
         List<ContactMessage> pending = messages.findByEmailedFalse();
         for (var msg : pending) {
