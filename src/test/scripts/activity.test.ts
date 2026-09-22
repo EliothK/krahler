@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { countPushes, relativeTime, fetchLiveActivity } from "../../scripts/activity";
+import { countPushes, relativeTime, fetchLiveActivity, fetchProxiedActivity } from "../../scripts/activity";
 
 describe("countPushes", () => {
     it("sums PushEvent commit counts per repo", () => {
@@ -177,5 +177,39 @@ describe("fetchLiveActivity", () => {
         expect(result).not.toBeNull();
         expect(result?.repos).toHaveLength(1);
         expect(result?.repos[0].commits).toBeUndefined();
+    });
+});
+
+describe("fetchProxiedActivity", () => {
+    beforeEach(() => {
+        vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("returns the parsed activity from the API", async () => {
+        const body = { generatedAt: "2026-09-22T00:00:00Z", repos: [] };
+        (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => body,
+        });
+        const result = await fetchProxiedActivity();
+        expect(result).toEqual(body);
+    });
+
+    it("returns null when the API responds with an error status", async () => {
+        (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: false,
+        });
+        expect(await fetchProxiedActivity()).toBeNull();
+    });
+
+    it("returns null when the request throws or times out", async () => {
+        (fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+            new Error("network down"),
+        );
+        expect(await fetchProxiedActivity()).toBeNull();
     });
 });
