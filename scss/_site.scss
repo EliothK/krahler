@@ -252,3 +252,18 @@ dialog.proj-dialog::backdrop { background: rgba(10, 14, 30, 0.78); }
 .certs { list-style: none; margin: 0; padding: 0; max-width: var(--measure); }
 .certs li { padding: 0.7rem 0; border-bottom: 1px solid var(--rule); font-size: 0.95rem; }
 .certs li:first-child { border-top: 1px solid var(--rule); }
+
+// Live API status panel
+.status-grid { display: flex; flex-wrap: wrap; gap: 1.5rem 3rem; margin: 0; }
+.status-grid dt { color: var(--ink-quiet); font-size: 0.85rem; margin-bottom: 0.2rem; }
+.status-grid dd { margin: 0; font-family: var(--font-data); font-size: 1.05rem; }
+
+// Architecture diagram
+.arch-diagram { width: 100%; max-width: 720px; height: auto; margin: 1.5rem 0; }
+.arch-box { fill: var(--night-raised); stroke: var(--rule); stroke-width: 1; }
+.arch-box.arch-flux { stroke: var(--flux); }
+.arch-box.arch-solar { stroke: var(--solar); }
+.arch-label { fill: var(--ink); font-family: var(--font-body); font-size: 15px; }
+.arch-sublabel { fill: var(--ink-quiet); font-family: var(--font-body); font-size: 11px; }
+.arch-edge { stroke: var(--ink-quiet); stroke-width: 1.5; fill: none; }
+.arch-arrowhead { fill: var(--ink-quiet); }
