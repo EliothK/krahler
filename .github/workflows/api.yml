@@ -88,13 +88,27 @@ jobs:
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+            # The Gmail app password the contact form emails through.
+            # Set as a Container App secret rather than a plain env var so it never appears in `az containerapp show` output, and refreshed every deploy so rotating it in GitHub takes effect on the next merge without a manual Azure step.
+            - name: Set the mail secret
+              env:
+                  MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+                  MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+              run: |
+                  az containerapp secret set \
+                    --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
+                    --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD"
+
             # A new revision starts alongside the old one, and traffic moves once it passes its readiness probe.
             - name: Roll out the image
               run: |
                   az containerapp update \
                     --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
                     --image "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/krahler-api:${{ github.sha }}" \
-                    --set-env-vars "API_VERSION=${{ github.sha }}"
+                    --set-env-vars \
+                      "API_VERSION=${{ github.sha }}" \
+                      "MAIL_USERNAME=secretref:mail-username" \
+                      "MAIL_PASSWORD=secretref:mail-password"
 
             # /api/status reports the version it was started with, so this fails if the old revision is still serving.
             # The first call can take a while: the app may scale up from zero and start a JVM.

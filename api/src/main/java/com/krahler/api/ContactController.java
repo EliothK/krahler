@@ -12,6 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,10 +34,14 @@ class ContactController {
     }
 
     private final RateLimiter limiter;
+    private final JavaMailSender mailSender;
+    private final String notifyTo;
 
-    ContactController(ApiProperties properties, Clock clock) {
+    ContactController(ApiProperties properties, Clock clock, JavaMailSender mailSender) {
         var limit = properties.contactRateLimit();
         this.limiter = new RateLimiter(limit.maxRequests(), limit.window(), clock);
+        this.mailSender = mailSender;
+        this.notifyTo = properties.contactNotifyTo();
     }
 
     @PostMapping("/api/contact")
@@ -42,9 +49,23 @@ class ContactController {
         if (!limiter.tryAcquire(clientKey(http))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "3600").build();
         }
-        // Stored in the database once that exists. Until then only the fact of the message is logged, never its content.
-        log.info("contact message received ({} characters)", request.message().length());
+        // Nothing is stored yet (that's the database phase), so email is the only way this reaches anyone.
+        // A failed send is logged but doesn't fail the request: the sender already sees it as accepted, and retrying on our end would need the message to be stored somewhere, which is exactly what's missing.
+        try {
+            notify(request);
+        } catch (MailException e) {
+            log.error("failed to send the contact notification email", e);
+        }
         return ResponseEntity.accepted().build();
+    }
+
+    private void notify(ContactRequest request) {
+        var mail = new SimpleMailMessage();
+        mail.setTo(notifyTo);
+        mail.setReplyTo(request.email());
+        mail.setSubject("Site contact: " + request.name());
+        mail.setText(request.message() + "\n\n— " + request.name() + " <" + request.email() + ">");
+        mailSender.send(mail);
     }
 
     // Behind Azure's ingress the caller's address arrives in X-Forwarded-For; the first entry is the original client.
