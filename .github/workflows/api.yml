@@ -98,7 +98,7 @@ jobs:
                   MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
                   MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
                   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-                  GITHUB_ACTIVITY_TOKEN: ${{ secrets.GITHUB_ACTIVITY_TOKEN }}
+                  GITHUB_ACTIVITY_TOKEN: ${{ secrets.GH_ACTIVITY_TOKEN }}
               run: |
                   az containerapp secret set \
                     --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
