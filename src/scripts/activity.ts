@@ -1,3 +1,5 @@
+import { API_BASE, COLD_START_TIMEOUT_MS } from "./api";
+
 // `env?.` because scripts/activity-snapshot.mjs imports this file under plain Node, where import.meta.env doesn't exist.
 export const GITHUB_USER = import.meta.env?.VITE_GITHUB_USER || "EliothK";
 
@@ -66,6 +68,20 @@ export async function fetchLiveActivity(limit = DEFAULT_LIMIT, token?: string): 
             // repos without commit counts are fine
         }
         return { generatedAt: new Date().toISOString(), repos};
+    } catch {
+        return null;
+    }
+}
+
+// Used in the browser: the API proxies GitHub with a server-side token (see ActivityController), so every visitor no longer shares GitHub's unauthenticated 60/hour limit.
+// It's on the same scale-to-zero Container App as the rest of the API, so a cold instance can take up to about a minute — a long timeout here just means the snapshot stays on screen a little longer, not a broken page.
+export async function fetchProxiedActivity(): Promise<Activity | null> {
+    try {
+        const res = await fetch(`${API_BASE}/api/activity`, {
+            signal: AbortSignal.timeout(COLD_START_TIMEOUT_MS),
+        });
+        if (!res.ok) return null;
+        return (await res.json()) as Activity;
     } catch {
         return null;
     }

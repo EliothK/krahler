@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  fetchLiveActivity,
+  fetchProxiedActivity,
   GITHUB_USER,
   type Activity,
 } from "../scripts/activity";
@@ -19,7 +19,7 @@ export default function RecentWork({
   useEffect(() => {
     let cancelled = false;
 
-    fetchLiveActivity()
+    fetchProxiedActivity()
       .then((d) => {
         if (cancelled) return;
         if (d) {
@@ -39,7 +39,7 @@ export default function RecentWork({
         What I'm working on now
       </h2>
       <p className="section-intro mb-4">
-        Pulled from GitHub in your browser each time the page loads, with the
+        Pulled from GitHub through the API each time the page loads, with the
         last build's copy as a fallback.
       </p>
 

@@ -18,7 +18,7 @@ describe("RecentWork", () => {
     beforeEach(() => {
         fetchSpy = vi.fn();
         vi.stubGlobal("fetch", fetchSpy);
-        vi.spyOn(activity, "fetchLiveActivity");
+        vi.spyOn(activity, "fetchProxiedActivity");
     });
 
     afterEach(() => {
@@ -26,14 +26,14 @@ describe("RecentWork", () => {
         vi.unstubAllGlobals();
     });
 
-    it("shows a loading state before GitHub answers", () => {
-        activity.fetchLiveActivity.mockReturnValue(new Promise(() => {}));
+    it("shows a loading state before the API answers", () => {
+        activity.fetchProxiedActivity.mockReturnValue(new Promise(() => {}));
         render(<RecentWork snapshot={null} />);
         expect(screen.getByText(/Loading recent activity/)).toBeInTheDocument();
     });
 
     it("renders repos from the live fetch and labels them as fresh", async () => {
-        activity.fetchLiveActivity.mockResolvedValue({
+        activity.fetchProxiedActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
             repos: [repo()],
         });
@@ -50,7 +50,7 @@ describe("RecentWork", () => {
     });
 
     it("does not request a build-time activity.json", async () => {
-        activity.fetchLiveActivity.mockResolvedValue({
+        activity.fetchProxiedActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
             repos: [repo()],
         });
@@ -64,7 +64,7 @@ describe("RecentWork", () => {
     });
 
     it("shows an error message when the live fetch yields nothing", async () => {
-        activity.fetchLiveActivity.mockResolvedValue(null);
+        activity.fetchProxiedActivity.mockResolvedValue(null);
 
         render(<RecentWork snapshot={null} />);
 
@@ -76,7 +76,7 @@ describe("RecentWork", () => {
     });
 
     it("shows an error message when the live fetch rejects", async () => {
-        activity.fetchLiveActivity.mockRejectedValue(new Error("boom"));
+        activity.fetchProxiedActivity.mockRejectedValue(new Error("boom"));
 
         render(<RecentWork snapshot={null} />);
 
@@ -88,7 +88,7 @@ describe("RecentWork", () => {
     });
 
     it("shows the build-time snapshot immediately instead of a spinner", () => {
-        activity.fetchLiveActivity.mockReturnValue(new Promise(() => {}));
+        activity.fetchProxiedActivity.mockReturnValue(new Promise(() => {}));
         render(
             <RecentWork
                 snapshot={{
@@ -103,7 +103,7 @@ describe("RecentWork", () => {
     });
 
     it("keeps the snapshot and says so when the live fetch fails", async () => {
-        activity.fetchLiveActivity.mockResolvedValue(null);
+        activity.fetchProxiedActivity.mockResolvedValue(null);
         render(
             <RecentWork
                 snapshot={{
@@ -121,7 +121,7 @@ describe("RecentWork", () => {
     });
 
     it("replaces the snapshot with live data when it arrives", async () => {
-        activity.fetchLiveActivity.mockResolvedValue({
+        activity.fetchProxiedActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
             repos: [repo({ name: "live-repo" })],
         });
@@ -141,7 +141,7 @@ describe("RecentWork", () => {
     });
 
     it("shows an empty state when there are no recent repos", async () => {
-        activity.fetchLiveActivity.mockResolvedValue({
+        activity.fetchProxiedActivity.mockResolvedValue({
             generatedAt: new Date().toISOString(),
             repos: [],
         });

@@ -10,7 +10,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties("api")
 public record ApiProperties(
-        List<String> allowedOrigins, RateLimit contactRateLimit, String contactNotifyTo) {
+        List<String> allowedOrigins,
+        RateLimit contactRateLimit,
+        String contactNotifyTo,
+        String activityGithubUser,
+        String activityGithubToken,
+        int activityLimit,
+        Duration activityCacheTtl) {
 
     /** At most {@code maxRequests} per client within {@code window}. */
     public record RateLimit(int maxRequests, Duration window) {
