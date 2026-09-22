@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.slf4j.Logger;
@@ -28,7 +29,8 @@ class ContactController {
     private static final Logger log = LoggerFactory.getLogger(ContactController.class);
 
     record ContactRequest(
-            @NotBlank @Size(max = 100) String name,
+            // No line breaks: name flows straight into the notification email's Subject header (see notify()), and nothing else stops a "name" containing \r\n from injecting extra headers.
+            @NotBlank @Size(max = 100) @Pattern(regexp = "[^\r\n]*") String name,
             @NotBlank @Email @Size(max = 200) String email,
             @NotBlank @Size(max = 2000) String message,
             // Hidden field in the form. People never fill it in, so anything here is a bot.
