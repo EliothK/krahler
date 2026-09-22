@@ -1,6 +1,35 @@
 import { useEffect } from "react";
+import ApiStatusPanel from "./ApiStatusPanel";
+import ArchitectureDiagram from "./ArchitectureDiagram";
 
 const REPO = "https://github.com/EliothK/krahler";
+
+const API_CHAPTER: { title: string; body: string }[] = [
+  {
+    title: "Durable by design, not by luck",
+    body: "A contact-form message is saved to Azure SQL before the notification email is even attempted. A failed send (an expired app password, Gmail throttling) used to lose the message silently; now the row survives, and the next real submission sweeps any still-unemailed row and retries it.",
+  },
+  {
+    title: "A secret rotation that silently didn't take effect",
+    body: 'az containerapp update --set-env-vars uses identical literal text on every deploy, including "secretref:name" references. A workflow_dispatch rerun of the same commit, done purely to rotate a password, changes nothing else in the spec, so Azure sees no diff and skips the restart. Three password regenerations had zero effect before this was found. Fixed by adding DEPLOY_RUN_ID, the GitHub Actions run ID, as an env var: guaranteed to differ on every run, so the container is guaranteed to actually restart.',
+  },
+  {
+    title: "Spring Boot 4 moved Flyway into its own starter",
+    body: "flyway-core plus flyway-sqlserver sat on the classpath completely unused after the database phase's first deploy: no error, no log line, just a schema that never got created. Spring Boot 4 split Flyway's autoconfiguration into spring-boot-starter-flyway, the same restructuring pattern already hit once with the test starter. The fix is a one-line dependency swap; finding it took grepping a startup log for the word \"Flyway\" and getting nothing.",
+  },
+  {
+    title: "H2 tests can't catch SQL-Server-specific behavior",
+    body: "Two real bugs shipped past a fully green test suite because tests ran against H2 instead of the real database: the Flyway bug above, and java.time.Instant mapping to an offset-aware SQL type on SQL Server that H2 is permissive about. Both fixed, and tests now run the actual Flyway migration against H2 in SQL Server compatibility mode instead of letting Hibernate build the schema itself, which is what should have caught the first bug originally.",
+  },
+  {
+    title: "A security review found two live bugs, not theoretical ones",
+    body: 'The contact form\'s "name" field flowed unvalidated into the notification email\'s Subject header, an email header injection gap, fixed with a line-break check. Separately, the rate limiter read the first (client-controlled) entry of X-Forwarded-For as the real client IP; Azure Container Apps appends the real IP rather than replacing the header, so a caller could defeat the 5-per-hour limit outright by sending a different fake value every request. Confirmed against Microsoft\'s own ingress docs before fixing it, since the intuitive assumption turned out to be backwards.',
+  },
+  {
+    title: "A scheduled job quietly defeated the database's own auto-pause",
+    body: "A background retry job queried the database every 15 minutes to catch failed sends. The API is scale-to-zero, and the site's own uptime check pings it about that often, cold-starting a fresh replica each time; Spring's scheduler fires almost immediately on startup with no initial delay, so nearly every cold start touched the database and reset its 60-minute auto-pause timer before it could ever complete. The database ran, and billed, continuously instead of mostly-paused, caught only by reading a cost export. Fixed by retrying at the top of a real contact submission instead of on a timer, which is also the only time the database legitimately needs to be awake.",
+  },
+];
 
 const NUMBERS: [string, string][] = [
   ["Dispatch to done", "~1m38s"],
@@ -120,10 +149,11 @@ export default function BuildLog() {
           <h1 className="lede mb-3">Build log</h1>
           <p className="quiet lede-sub">
             How this site ships: GitHub Actions deploys it to Azure Static Web
-            Apps. It ran on Kubernetes (AKS) first, and most of this log is
-            that chapter: what I built, what broke, and what I learned before
-            moving it to static hosting. The AKS-era numbers come from real
-            runs, not estimates.
+            Apps and a Spring Boot API on a Container App, with an Azure SQL
+            database behind the contact form. It ran on Kubernetes (AKS)
+            first; that chapter is further down, what I built, what broke,
+            and what I learned before moving it to static hosting. The
+            AKS-era numbers come from real runs, not estimates.
             Source:{" "}
             <a
               href={`${REPO}/blob/main/.github/workflows/deploy.yml`}
@@ -143,6 +173,35 @@ export default function BuildLog() {
             .
           </p>
         </header>
+
+        <section className="band" aria-labelledby="arch-heading">
+          <h2 id="arch-heading" className="mb-2">
+            How it&apos;s built now
+          </h2>
+          <p className="section-intro mb-3">
+            A visitor&apos;s browser talks to two things: Static Web Apps for
+            the page itself, and a Spring Boot API on its own Container App
+            for the contact form and the GitHub activity feed. The API is the
+            only thing that talks to the database, and it scales to zero (and
+            the database auto-pauses) when nobody&apos;s using either.
+            GitHub Actions deploys all three, authenticating to Azure with
+            OIDC rather than a stored credential.
+          </p>
+          <ArchitectureDiagram />
+        </section>
+
+        <ApiStatusPanel />
+
+        <section className="band" aria-labelledby="api-chapter-heading">
+          <h2 id="api-chapter-heading" className="mb-2">
+            Building the API and database
+          </h2>
+          <p className="section-intro mb-3">
+            The newest chapter: a real backend, a real database, and the
+            incidents that came with both. None of this was staged.
+          </p>
+          <Entries items={API_CHAPTER} />
+        </section>
 
         <section className="band" aria-labelledby="moved-heading">
           <h2 id="moved-heading" className="mb-2">
