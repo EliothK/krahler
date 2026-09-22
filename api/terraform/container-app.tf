@@ -83,6 +83,7 @@ resource "azurerm_container_app" "api" {
       workload_profile_name, # Azure fills in "Consumption" on its own
       template[0].container[0].image,
       template[0].container[0].env,
+      secret, # the mail credentials are set by `az containerapp secret set` in the deploy job, not declared here
     ]
   }
 }
