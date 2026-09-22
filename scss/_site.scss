@@ -227,6 +227,15 @@ dialog.proj-dialog::backdrop { background: rgba(10, 14, 30, 0.78); }
 .work-empty { color: var(--ink-quiet); font-size: 0.95rem; }
 .freshness { font-size: 0.83rem; color: var(--ink-quiet); margin-top: 0.85rem; }
 
+// Off-screen rather than display:none, so a bot filling every field by DOM position still reaches it.
+.honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
 // Skill / Experience
 .tier { margin-bottom: 2.25rem; max-width: var(--measure); }
 .tier h3 { font-size: 1.07rem; margin-bottom: 0.25rem; }

@@ -6,9 +6,25 @@ import App from '../App';
 vi.mock('../scripts/snapshot', () => ({ SNAPSHOT: null }));
 
 describe('App', () => {
+    beforeEach(() => {
+        // Contact's warm-up ping would otherwise hit the real network during these renders.
+        vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
     it('renders exactly one h1', () =>{
         render(<App />);
         expect(screen.getAllByRole('heading', {level:1})).toHaveLength(1);
+    });
+
+    it('includes the contact section', () => {
+        render(<App />);
+        expect(
+            screen.getByRole('heading', { level: 2, name: 'Get in touch' }),
+        ).toBeInTheDocument();
     });
 
     it('names every project section', () => {
