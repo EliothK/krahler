@@ -1,6 +1,8 @@
 package com.krahler.api;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -36,12 +38,17 @@ class ContactController {
     private final RateLimiter limiter;
     private final JavaMailSender mailSender;
     private final String notifyTo;
+    private final ContactMessageRepository messages;
+    private final Clock clock;
 
-    ContactController(ApiProperties properties, Clock clock, JavaMailSender mailSender) {
+    ContactController(
+            ApiProperties properties, Clock clock, JavaMailSender mailSender, ContactMessageRepository messages) {
         var limit = properties.contactRateLimit();
         this.limiter = new RateLimiter(limit.maxRequests(), limit.window(), clock);
+        this.clock = clock;
         this.mailSender = mailSender;
         this.notifyTo = properties.contactNotifyTo();
+        this.messages = messages;
     }
 
     @PostMapping("/api/contact")
@@ -49,22 +56,40 @@ class ContactController {
         if (!limiter.tryAcquire(clientKey(http))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "3600").build();
         }
-        // Nothing is stored yet (that's the database phase), so email is the only way this reaches anyone.
-        // A failed send is logged but doesn't fail the request: the sender already sees it as accepted, and retrying on our end would need the message to be stored somewhere, which is exactly what's missing.
+        // Stored first: whatever happens to the email next, the message itself is now durable.
+        var saved = messages.save(new ContactMessage(request.name(), request.email(), request.message(), Instant.now(clock)));
+        // A failed send is logged, not retried inline: retryUnemailed() picks it up on its own schedule, and the sender already sees this as accepted either way.
         try {
-            notify(request);
+            notify(saved);
+            saved.markEmailed();
+            messages.save(saved);
         } catch (MailException e) {
-            log.error("failed to send the contact notification email", e);
+            log.error("failed to send the contact notification email for message {}", saved.getId(), e);
         }
         return ResponseEntity.accepted().build();
     }
 
-    private void notify(ContactRequest request) {
+    // Catches transient failures (an expired app password, Gmail throttling) that a plain retry-on-submit can't: the sender is long gone by the time this runs, but the message they wrote isn't.
+    @Scheduled(fixedRate = 900_000)
+    void retryUnemailed() {
+        List<ContactMessage> pending = messages.findByEmailedFalse();
+        for (var msg : pending) {
+            try {
+                notify(msg);
+                msg.markEmailed();
+                messages.save(msg);
+            } catch (MailException e) {
+                log.warn("retry failed for contact message {}", msg.getId(), e);
+            }
+        }
+    }
+
+    private void notify(ContactMessage msg) {
         var mail = new SimpleMailMessage();
         mail.setTo(notifyTo);
-        mail.setReplyTo(request.email());
-        mail.setSubject("Site contact: " + request.name());
-        mail.setText(request.message() + "\n\n— " + request.name() + " <" + request.email() + ">");
+        mail.setReplyTo(msg.getSenderEmail());
+        mail.setSubject("Site contact: " + msg.getSenderName());
+        mail.setText(msg.getMessage() + "\n\n— " + msg.getSenderName() + " <" + msg.getSenderEmail() + ">");
         mailSender.send(mail);
     }
 

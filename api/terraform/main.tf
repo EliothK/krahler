@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 5.5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   # Pass the key at init time, e.g. -backend-config=backend.hcl (see backend.hcl.example): key = "api.tfstate".
@@ -23,5 +27,6 @@ provider "azurerm" {
   resource_providers_to_register = [
     "Microsoft.App",                 # Container Apps
     "Microsoft.OperationalInsights", # Log Analytics
+    "Microsoft.Sql",                 # Azure SQL
   ]
 }
