@@ -95,11 +95,15 @@ class ContactController {
         mailSender.send(mail);
     }
 
-    // Behind Azure's ingress the caller's address arrives in X-Forwarded-For; the first entry is the original client.
+    // Azure Container Apps appends the real client IP to X-Forwarded-For rather than replacing it, so the rightmost entry is the one Azure itself observed;
+    // anything to its left is whatever the caller chose to send and rate-limits on it trivially (Microsoft's own ingress docs confirm this:
+    // "Only the rightmost IP is provided by Azure Container Apps. Any other values must be validated by the user to prevent IP spoofing.").
+    // Taking the first entry, as this used to, let a client defeat the rate limit outright by sending a different fake leftmost value on every request.
     private static String clientKey(HttpServletRequest http) {
         String forwarded = http.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            String[] parts = forwarded.split(",");
+            return parts[parts.length - 1].trim();
         }
         return http.getRemoteAddr();
     }

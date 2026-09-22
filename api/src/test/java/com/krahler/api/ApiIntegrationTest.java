@@ -266,6 +266,24 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void rateLimitsOnTheRightmostForwardedForEntryNotTheClientSuppliedOnes() throws Exception {
+        // Azure appends the real client IP after whatever the caller sent, so only the rightmost entry is trustworthy.
+        // A different fake leftmost value on every request must not evade the limit as long as the rightmost (real) address stays the same.
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(post("/api/contact")
+                            .header("X-Forwarded-For", "203.0.113." + (50 + i) + ", 198.51.100.9")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID))
+                    .andExpect(status().isAccepted());
+        }
+        mvc.perform(post("/api/contact")
+                        .header("X-Forwarded-For", "203.0.113.99, 198.51.100.9")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
     void allowsTheSiteOriginAndNoOthers() throws Exception {
         mvc.perform(options("/api/contact")
                         .header("Origin", "https://krahler.com")
