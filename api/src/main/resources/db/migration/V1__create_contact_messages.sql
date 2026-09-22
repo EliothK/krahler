@@ -1,5 +1,4 @@
--- Written for Azure SQL. Tests run against H2 with Hibernate's own ddl-auto instead of this file (see ContactMessage and application-test.properties):
--- the two schemas are meant to match, but a portfolio's test suite doesn't carry the weight of running Flyway against two database engines to prove it.
+-- Written for Azure SQL. Tests run this same file against H2 in MSSQLServer compatibility mode (see application-test.properties), so it has to stay within syntax both engines accept — no filtered index, in particular, which is how the first real deploy caught a dependency mistake H2-with-ddl-auto never could have.
 CREATE TABLE contact_messages (
     id BIGINT IDENTITY(1,1) PRIMARY KEY,
     sender_name NVARCHAR(100) NOT NULL,
@@ -9,4 +8,5 @@ CREATE TABLE contact_messages (
     emailed BIT NOT NULL DEFAULT 0
 );
 
-CREATE INDEX ix_contact_messages_emailed ON contact_messages (emailed) WHERE emailed = 0;
+-- The table stays small (a portfolio's contact volume), so a plain index over a filtered one is fine.
+CREATE INDEX ix_contact_messages_emailed ON contact_messages (emailed);

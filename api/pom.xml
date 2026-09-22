@@ -46,9 +46,11 @@
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
         </dependency>
+        <!-- Spring Boot 4 moved Flyway autoconfiguration out of spring-boot-autoconfigure into this dedicated starter (same restructuring as webmvc-test and mail);
+            flyway-core + flyway-sqlserver alone sit on the classpath unused, with no error and no log line, which is exactly what happened on the first deploy. -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
