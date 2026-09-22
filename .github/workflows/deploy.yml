@@ -68,7 +68,11 @@ jobs:
                 include:
                     - { name: site, dir: terraform, key: site.tfstate }
                     - { name: api, dir: api/terraform, key: api.tfstate }
-                    - { name: lab, dir: lab/terraform, key: "${{ vars.TFSTATE_KEY }}" }
+                    - {
+                          name: lab,
+                          dir: lab/terraform,
+                          key: "${{ vars.TFSTATE_KEY }}",
+                      }
         defaults:
             run:
                 working-directory: ${{ matrix.dir }} # applies to every run step below
@@ -175,22 +179,24 @@ jobs:
                     --query defaultHostname -o tsv)
                   echo "url=https://$host" >> "$GITHUB_OUTPUT"
 
-            # A fresh deploy can take a few seconds to reach every edge, so wait for the page rather than failing the checks on a race.
+            # A fresh deploy can take a few seconds to reach every edge, so wait for the origin directly rather than failing the checks on a race.
             - name: Wait for the new version to answer
               run: curl -sf --retry 10 --retry-delay 5 --retry-all-errors -o /dev/null "${{ steps.site.outputs.url }}/"
 
+            # From here on, test the hostname visitors actually use, not the *.azurestaticapps.net one from the step above.
+            # the API's CORS only allows krahler.com and www.krahler.com, so a check against the default hostname would fail on the contact form and the status ping, even though the site itself is fine.
             - name: Smoke test the live site
               env:
-                  SMOKE_URL: ${{ steps.site.outputs.url }}
+                  SMOKE_URL: https://krahler.com
               # The CDN can serve the previous version for a few seconds after the deploy finishes, so retry once before failing.
               run: npm run smoke || { sleep 45; npm run smoke; }
 
             - name: Lighthouse thresholds
               env:
-                  SMOKE_URL: ${{ steps.site.outputs.url }}
+                  SMOKE_URL: https://krahler.com
               run: npm run lighthouse
 
             - name: Report what shipped
               run: |
                   echo "### Deployed \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-                  echo "${{ steps.site.outputs.url }} (krahler.com)" >> "$GITHUB_STEP_SUMMARY"
+                  echo "https://krahler.com" >> "$GITHUB_STEP_SUMMARY"
