@@ -222,6 +222,16 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void rejectsALineBreakInTheNameField() throws Exception {
+        mvc.perform(post("/api/contact")
+                        .header("X-Forwarded-For", "203.0.113.10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Ada\\r\\nBcc: victim@example.com","email":"ada@example.com","message":"hi"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rejectsAFilledHoneypotField() throws Exception {
         mvc.perform(post("/api/contact")
                         .header("X-Forwarded-For", "203.0.113.3")
