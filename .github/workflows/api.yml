@@ -100,6 +100,10 @@ jobs:
                     --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD"
 
             # A new revision starts alongside the old one, and traffic moves once it passes its readiness probe.
+            #
+            # DEPLOY_RUN_ID exists only to force that new revision on every run, including a workflow_dispatch rerun of the same commit (e.g. to rotate MAIL_PASSWORD).
+            # Without something that always changes, Azure compares this spec to the running one, sees identical text (the image tag, the "secretref:..." references) and skips the restart — so the container keeps running on whatever secret VALUES it started with, silently ignoring a rotated secret.
+            # Found the hard way: rotating MAIL_PASSWORD and redeploying repeatedly had no effect until a change here finally forced a real restart.
             - name: Roll out the image
               run: |
                   az containerapp update \
@@ -107,6 +111,7 @@ jobs:
                     --image "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/krahler-api:${{ github.sha }}" \
                     --set-env-vars \
                       "API_VERSION=${{ github.sha }}" \
+                      "DEPLOY_RUN_ID=${{ github.run_id }}-${{ github.run_attempt }}" \
                       "MAIL_USERNAME=secretref:mail-username" \
                       "MAIL_PASSWORD=secretref:mail-password"
 
