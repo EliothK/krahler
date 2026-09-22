@@ -80,6 +80,9 @@ jobs:
             RESOURCE_GROUP: rg-portfolio-api # names, not secrets; they match api/terraform
             APP_NAME: ca-portfolio-api
             API_URL: https://api.krahler.com
+            DB_HOST: sql-portfolio-api.database.windows.net
+            DB_NAME: sqldb-portfolio-contacts
+            DB_USERNAME: apiadmin
         steps:
             - name: Authenticate to Azure
               uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
@@ -90,14 +93,15 @@ jobs:
 
             # The Gmail app password the contact form emails through.
             # Set as a Container App secret rather than a plain env var so it never appears in `az containerapp show` output, and refreshed every deploy so rotating it in GitHub takes effect on the next merge without a manual Azure step.
-            - name: Set the mail secret
+            - name: Set the mail and database secrets
               env:
                   MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
                   MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
               run: |
                   az containerapp secret set \
                     --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
-                    --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD"
+                    --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD" "db-password=$DB_PASSWORD"
 
             # A new revision starts alongside the old one, and traffic moves once it passes its readiness probe.
             #
@@ -113,7 +117,11 @@ jobs:
                       "API_VERSION=${{ github.sha }}" \
                       "DEPLOY_RUN_ID=${{ github.run_id }}-${{ github.run_attempt }}" \
                       "MAIL_USERNAME=secretref:mail-username" \
-                      "MAIL_PASSWORD=secretref:mail-password"
+                      "MAIL_PASSWORD=secretref:mail-password" \
+                      "DB_HOST=$DB_HOST" \
+                      "DB_NAME=$DB_NAME" \
+                      "DB_USERNAME=$DB_USERNAME" \
+                      "DB_PASSWORD=secretref:db-password"
 
             # /api/status reports the version it was started with, so this fails if the old revision is still serving.
             # The first call can take a while: the app may scale up from zero and start a JVM.

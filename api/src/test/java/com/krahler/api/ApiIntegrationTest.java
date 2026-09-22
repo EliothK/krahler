@@ -14,20 +14,26 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessagePreparator;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import jakarta.mail.internet.MimeMessage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = {
         "api.contact-rate-limit.max-requests=3",
         "api.contact-rate-limit.window=1h"
 })
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ApiIntegrationTest {
 
     @Autowired
@@ -35,6 +41,12 @@ class ApiIntegrationTest {
 
     @Autowired
     RecordingMailSender mailSender;
+
+    @Autowired
+    ContactMessageRepository messages;
+
+    @Autowired
+    ContactController contactController;
 
     // Real network calls to smtp.gmail.com have no place in a test run. Records what was sent instead.
     @org.springframework.boot.test.context.TestConfiguration
@@ -48,15 +60,17 @@ class ApiIntegrationTest {
 
     static class RecordingMailSender implements JavaMailSender {
         final List<SimpleMailMessage> sent = new ArrayList<>();
+        final AtomicBoolean failing = new AtomicBoolean(false);
 
         @Override
         public void send(SimpleMailMessage simpleMessage) {
+            if (failing.get()) throw new MailSendException("simulated SMTP failure");
             sent.add(simpleMessage);
         }
 
         @Override
         public void send(SimpleMailMessage... simpleMessages) {
-            for (var m : simpleMessages) sent.add(m);
+            for (var m : simpleMessages) send(m);
         }
 
         @Override
@@ -132,6 +146,61 @@ class ApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(mail.getTo()).contains("eliothkrahler@gmail.com");
         org.assertj.core.api.Assertions.assertThat(mail.getReplyTo()).isEqualTo("ada@example.com");
         org.assertj.core.api.Assertions.assertThat(mail.getText()).contains("Hello there");
+    }
+
+    @Test
+    void storesTheMessageEvenWhenTheEmailIsAccepted() throws Exception {
+        long before = messages.count();
+
+        mvc.perform(post("/api/contact")
+                        .header("X-Forwarded-For", "203.0.113.7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID))
+                .andExpect(status().isAccepted());
+
+        assertThat(messages.count()).isEqualTo(before + 1);
+        var stored = messages.findAll().get((int) before);
+        assertThat(stored.getSenderName()).isEqualTo("Ada");
+        assertThat(stored.isEmailed()).isTrue();
+    }
+
+    @Test
+    void storesTheMessageEvenWhenTheEmailFails() throws Exception {
+        long before = messages.count();
+        mailSender.failing.set(true);
+        try {
+            mvc.perform(post("/api/contact")
+                            .header("X-Forwarded-For", "203.0.113.8")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID))
+                    .andExpect(status().isAccepted());
+        } finally {
+            mailSender.failing.set(false);
+        }
+
+        assertThat(messages.count()).isEqualTo(before + 1);
+        var stored = messages.findAll().get((int) before);
+        assertThat(stored.isEmailed()).isFalse();
+    }
+
+    @Test
+    void retriesAMessageThatFailedToEmailTheFirstTime() throws Exception {
+        mailSender.failing.set(true);
+        try {
+            mvc.perform(post("/api/contact")
+                            .header("X-Forwarded-For", "203.0.113.9")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID))
+                    .andExpect(status().isAccepted());
+        } finally {
+            mailSender.failing.set(false);
+        }
+        int sentBefore = mailSender.sent.size();
+
+        contactController.retryUnemailed();
+
+        assertThat(mailSender.sent.size()).isEqualTo(sentBefore + 1);
+        assertThat(messages.findByEmailedFalse()).isEmpty();
     }
 
     @Test
