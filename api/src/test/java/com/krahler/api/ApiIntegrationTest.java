@@ -204,6 +204,30 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void aNewSubmissionSweepsAPreviouslyFailedOneWithoutAScheduledJob() throws Exception {
+        // There is deliberately no @Scheduled retry (see ContactController.retryUnemailed()'s comment): the next real submission is what gives an earlier failure another chance.
+        mailSender.failing.set(true);
+        try {
+            mvc.perform(post("/api/contact")
+                            .header("X-Forwarded-For", "203.0.113.11")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID))
+                    .andExpect(status().isAccepted());
+        } finally {
+            mailSender.failing.set(false);
+        }
+        assertThat(messages.findByEmailedFalse()).isNotEmpty();
+
+        mvc.perform(post("/api/contact")
+                        .header("X-Forwarded-For", "203.0.113.11")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID))
+                .andExpect(status().isAccepted());
+
+        assertThat(messages.findByEmailedFalse()).isEmpty();
+    }
+
+    @Test
     void rejectsInvalidInput() throws Exception {
         for (String body : new String[] {
                 """
