@@ -2,6 +2,8 @@ name: uptime
 
 # Replaces the Azure availability test (App Insights + Log Analytics), which cost money and lived in the AKS lab's resource group.
 # Every 15 minutes it runs the same smoke test the deploy runs, against both public hostnames, so it checks status codes, deep links, security headers, caching and TLS, not just "is it up".
+# It also checks the API's health, which is a plain curl rather than the site smoke suite: the API scales to zero, so a check counts as passing if it
+# eventually answers within its cold-start time (measured at ~48s; 90s leaves margin) rather than expecting an instant response like the static site.
 #
 # Alerting: when a check fails (after one retry) it opens a GitHub issue labelled `uptime`, and GitHub emails the repo owner. When checks pass again it comments on and closes that issue.
 # Notes:
@@ -49,8 +51,20 @@ jobs:
                   [ -z "$failed" ]
               continue-on-error: true
 
-            - name: Open an issue if the site is failing
-              if: steps.smoke.outcome == 'failure'
+            # The API can be cold (scaled to zero), so this waits rather than failing on the first slow reply.
+            - name: Check the API's health
+              id: api
+              run: |
+                  ok=""
+                  for i in $(seq 1 3); do
+                    curl -sf -m 90 https://api.krahler.com/api/status >/dev/null && { ok=1; break; }
+                    sleep 20
+                  done
+                  [ -n "$ok" ]
+              continue-on-error: true
+
+            - name: Open an issue if something is failing
+              if: steps.smoke.outcome == 'failure' || steps.api.outcome == 'failure'
               env:
                   GH_TOKEN: ${{ github.token }}
                   FAILED: ${{ steps.smoke.outputs.failed }}
@@ -58,15 +72,17 @@ jobs:
               run: |
                   gh label create uptime --color B60205 --description "Automated uptime check" 2>/dev/null || true
                   open=$(gh issue list --label uptime --state open --json number --jq '.[0].number')
-                  body="Smoke test failed for: ${FAILED:-unknown}. Run: $RUN_URL"
+                  targets="${FAILED:-}"
+                  [ "${{ steps.api.outcome }}" = "failure" ] && targets="${targets} https://api.krahler.com/api/status"
+                  body="Smoke test failed for: ${targets# }. Run: $RUN_URL"
                   if [ -n "$open" ]; then
                     gh issue comment "$open" --body "Still failing. $body"
                   else
                     gh issue create --label uptime --title "krahler.com is failing its uptime check" --body "$body"
                   fi
 
-            - name: Close the issue once the site recovers
-              if: steps.smoke.outcome == 'success'
+            - name: Close the issue once everything recovers
+              if: steps.smoke.outcome == 'success' && steps.api.outcome == 'success'
               env:
                   GH_TOKEN: ${{ github.token }}
                   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -75,6 +91,6 @@ jobs:
                     gh issue close "$n" --comment "Recovered. Checks are passing again: $RUN_URL"
                   done
 
-            - name: Fail the run if the site is down
-              if: steps.smoke.outcome == 'failure'
+            - name: Fail the run if something is down
+              if: steps.smoke.outcome == 'failure' || steps.api.outcome == 'failure'
               run: exit 1
