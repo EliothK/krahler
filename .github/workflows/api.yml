@@ -83,6 +83,9 @@ jobs:
             DB_HOST: sql-portfolio-api.database.windows.net
             DB_NAME: sqldb-portfolio-contacts
             DB_USERNAME: apiadmin
+            # CORS. Set on every deploy because api/terraform ignores env changes after creation, so this is the only place the live list can change.
+            # The third origin is the site's `staging` preview environment (deploy.yml), so the contact form, status panel and activity feed work there too.
+            ALLOWED_ORIGINS: https://krahler.com,https://www.krahler.com,https://orange-river-067e6cd10-staging.centralus.6.azurestaticapps.net
         steps:
             - name: Authenticate to Azure
               uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
@@ -116,6 +119,7 @@ jobs:
                     --image "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/krahler-api:${{ github.sha }}" \
                     --set-env-vars \
                       "API_VERSION=${{ github.sha }}" \
+                      "API_ALLOWED_ORIGINS=$ALLOWED_ORIGINS" \
                       "DEPLOY_RUN_ID=${{ github.run_id }}-${{ github.run_attempt }}" \
                       "MAIL_USERNAME=secretref:mail-username" \
                       "MAIL_PASSWORD=secretref:mail-password" \
