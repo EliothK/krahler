@@ -50,7 +50,7 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
-            <version>1.16.2</version>
+            <version>1.18.6</version>
             <scope>runtime</scope>
         </dependency>
         <!-- Spring Boot 4 moved Flyway autoconfiguration out of spring-boot-autoconfigure into this dedicated starter (same restructuring as webmvc-test and mail);
