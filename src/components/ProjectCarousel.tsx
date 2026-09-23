@@ -8,6 +8,8 @@ function ProjectCarousel({ onOpen }: Props) {
     const [index, setIndex] = useState(1);
     const [atStart, setAtStart] = useState(true);
     const [atEnd, setAtEnd] = useState(false);
+    // Cards grow to fill the row on wide screens, so there's often nothing to scroll; the nav would then only say "3 / 3".
+    const [fits, setFits] = useState(false);
 
     const stepWidth = useCallback(() => {
         const rail = railRef.current;
@@ -31,6 +33,7 @@ function ProjectCarousel({ onOpen }: Props) {
         );
         setAtStart(rail.scrollLeft < 8);
         setAtEnd(atRailEnd);
+        setFits(rail.scrollWidth <= rail.clientWidth + 1);
     }, [stepWidth]);
 
     useEffect(() => {
@@ -64,7 +67,7 @@ function ProjectCarousel({ onOpen }: Props) {
                         autopsy, and what I'd change.
                     </p>
                 </div>
-                <div className="rail-nav">
+                <div className="rail-nav" hidden={fits}>
                     <span className="rail-count" aria-live="polite">
                         {index} / {PROJECTS.length}
                     </span>
@@ -74,13 +77,17 @@ function ProjectCarousel({ onOpen }: Props) {
                         onClick={() => scrollBy(-1)}
                         disabled={atStart}
                         aria-label="Previous projects"
-                    />
+                    >
+                        <span aria-hidden="true">&larr;</span>
+                    </button>
                     <button
                         type="button"
                         className="rail-btn"
                         onClick={() => scrollBy(1)}
                         aria-label="More projects"
-                    />
+                    >
+                        <span aria-hidden="true">&rarr;</span>
+                    </button>
                 </div>
             </div>
             <div
