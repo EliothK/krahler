@@ -1,6 +1,6 @@
 import SectionNav from "./SectionNav";
 
-// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src (public/staticwebapp.config.json; lab/security.conf for the AKS lab) and the preload in index.html in sync.
+// Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src (public/staticwebapp.config.json; lab/security.conf for the AKS lab) in sync.
 const AVATAR = "https://avatars.githubusercontent.com/u/175250448?v=4";
 const PROFILE_PIC = `${AVATAR}&s=320`;
 // GitHub resizes on the s= parameter. The photo shows at 72px on phones, 120px on tablets and up to 240px on desktop, so a phone shouldn't download the 150 KB desktop size.
@@ -34,16 +34,18 @@ function ProfileCard() {
     return (
         <div className="profile-sticky">
             <div className="profile-card">
-                <img
-                    className="profile-photo"
-                    src={PROFILE_PIC}
-                    srcSet={PROFILE_SRCSET}
-                    sizes={PROFILE_SIZES}
-                    fetchPriority="high"
-                    alt="Elioth Krahler"
-                    width={360}
-                    height={360}
-                />
+                {/* In a <picture> only so React's server render doesn't add its own preload for the photo: that preload picked the wrong srcset size on phones and the photo downloaded twice. */}
+                <picture>
+                    <source srcSet={PROFILE_SRCSET} sizes={PROFILE_SIZES} />
+                    <img
+                        className="profile-photo"
+                        src={PROFILE_PIC}
+                        fetchPriority="high"
+                        alt="Elioth Krahler"
+                        width={360}
+                        height={360}
+                    />
+                </picture>
 
                 <div className="profile-id">
                     <h1 className="profile-name mb-2">Elioth Krahler</h1>
