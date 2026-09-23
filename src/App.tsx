@@ -31,13 +31,16 @@ export default function App() {
                         <main id="main">
                             <header className="pb-4">
                                 <p className="lede mb-3">
-                                    Physics-bound, but I ship
+                                    Curious first. Shipped second.
                                 </p>
                                 <p className="quiet lede-sub">
-                                    A GPU forecasting system in production, a
-                                    verified reactor-physics surrogate, and this
-                                    site - delivered by a pipeline I built end
-                                    to end.
+                                    I learn whatever the problem needs: solar
+                                    forecasting, reactor physics, then
+                                    Kubernetes, Terraform and a Java API to
+                                    build this site. Each one is shipped and
+                                    written up, including what broke. That same
+                                    curiosity is why I plan to do a PhD in
+                                    physics.
                                 </p>
                             </header>
                             {/** <ForecastHero /> */}
