@@ -241,8 +241,16 @@ export default function BuildLog() {
               image, so they went with it. The checks that replace them run on
               every change: dependency audit, lint, unit tests, a build, and
               Terraform validation. After each deploy, a smoke test checks the
-              live site&apos;s status codes, security headers and caching, and a
-              Lighthouse run has to clear score thresholds.
+              live site&apos;s status codes, security headers and caching, a
+              real browser scrolls the page to check behaviour jsdom can&apos;t
+              see, and a Lighthouse run has to clear score thresholds.
+            </li>
+            <li>
+              The Azure availability test stayed with the AKS lab. The live
+              site is watched by a scheduled GitHub Actions workflow instead:
+              about every 15 minutes it smoke-tests both hostnames and the
+              API&apos;s health, opens an issue when something fails and closes
+              it on recovery.
             </li>
             <li>
               The Kubernetes and Terraform setup was not thrown away. It is
@@ -315,7 +323,7 @@ export default function BuildLog() {
             <li>
               Detection is bounded by the test frequency and the alert window.
               The incident ran with 5-minute values across 3 regions; the
-              current config is 2 regions, a 15-minute test interval, a
+              lab&apos;s current config is 2 regions, a 15-minute test interval, a
               15-minute window and an alert at 2 failed locations, so detection
               is slower now. Tightening either costs more, so it is a trade, not
               a free fix.

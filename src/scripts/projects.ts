@@ -21,16 +21,16 @@ export const PROJECTS: Project[] = [
     {
         id: "pipeline",
         title: "This site's delivery pipeline",
-        stack: "GitHub Actions · Azure Static Web Apps · Terraform · AKS (first version)",
+        stack: "GitHub Actions · Terraform · Static Web Apps · Container Apps · Azure SQL · AKS (first version)",
         summary:
-            "Commit to production with no manual steps and no long-lived secret. It started on Kubernetes and moved to static hosting once the cost stopped making sense.",
+            "Commit to production with no manual steps and no long-lived secret. It started on Kubernetes and moved to static hosting with a scale-to-zero API once the cost stopped making sense.",
         figure: null,
         figureAccent: "flux",
         figurePending: "cost comparison pending",
         figureLabel: "measured monthly cost, AKS versus Static Web Apps, once the cutover is done",
         program: [
-            "Ship this React site with no manual steps and no long-lived secrets, on a small budget. The first version ran on Azure Kubernetes Service: a free-tier control plane, one node, and the node stopped overnight by a scheduled workflow. The current version runs on Azure Static Web Apps, with a small backend API planned behind it.",
-            "The parts that carried over: OIDC workload identity federation instead of a long-lived service principal secret, scoped to the production environment, so there is no secret to leak or rotate. Terraform state in Azure Storage, because a runner is a fresh machine every time and local state would not survive it. CI runs lint, tests, a build, and terraform fmt and validate on every change; infrastructure itself is applied by hand, not by the pipeline. The parts that were about the container and went with it: a multi-stage image, images tagged by commit SHA and deployed by digest, Trivy scanning and build-provenance attestation.",
+            "Ship this React site with no manual steps and no long-lived secrets, on a small budget. The first version ran on Azure Kubernetes Service: a free-tier control plane, one node, and the node stopped overnight by a scheduled workflow. The current version serves the page from Azure Static Web Apps, with a Spring Boot API on Azure Container Apps and an Azure SQL database behind the contact form. The API scales to zero and the database auto-pauses when nobody is using them.",
+            "The parts that carried over: OIDC workload identity federation instead of a long-lived service principal secret, scoped to the production environment, so there is no secret to leak or rotate. Terraform state in Azure Storage, because a runner is a fresh machine every time and local state would not survive it. CI runs lint, tests, a build, and terraform fmt and validate on every change, and the API's Maven tests on every API change; infrastructure itself is applied by hand, not by the pipeline. After each deploy, a smoke test, a real-browser check and a Lighthouse score gate run against the live site. The parts that were about the container and went with it: a multi-stage image, images tagged by commit SHA and deployed by digest, Trivy scanning and build-provenance attestation.",
         ],
         autopsy: [
             "AKS-era numbers, from a real workflow_dispatch run: about 1m38s from dispatch to done. ci 39s, terraform (fmt and validate only) 9s, deploy 53s, and the rollout itself about 5s across two replicas with maxUnavailable 0. The image was 63 MB locally, over my 50 MB target. Both Alpine nginx bases have grown past that upstream, so I kept the number and dropped the target.",
@@ -40,7 +40,7 @@ export const PROJECTS: Project[] = [
         ],
         next: [
             "Kubernetes was more than a one-page static site needs, and I'd rather say so than pretend otherwise. The point of the first version was to build the delivery path properly, not to right-size the workload. Even with the node stopped overnight, the load balancer, public IP and registry billed around the clock, and the site was dark from 10pm to 5am. Moving to static hosting removed both problems. The AKS setup is kept in the repo as a lab I can bring up and tear down, with its own Terraform state.",
-            "Still under-engineered: no staging environment, Terraform applied by hand rather than by the pipeline, and no alert on a bad deploy other than the external availability test. Staging environment first - it's the one whose absence I'd actually feel.",
+            "Still under-engineered: no staging environment, and Terraform applied by hand rather than by the pipeline. A bad deploy fails the post-deploy checks and a scheduled uptime workflow opens an issue, but by then it's already live. Staging environment first - it's the one whose absence I'd actually feel.",
         ],
         links: [
             { label: "The workflow", href: "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy.yml" },

@@ -46,8 +46,7 @@ const TIERS: {
     },
     {
         heading: "Learned by building this site",
-        caveat:
-            "These are newer to me than the rest, so they're listed apart. Each one links to the file in this repo that shows it, so you can judge the work instead of taking my word.",
+        caveat: "These are newer to me than the rest, so they're listed apart. Each one links to the file in this repo that shows it, so you can judge the work instead of taking my word.",
         skills: [
             {
                 name: "GitHub Actions",
@@ -60,6 +59,14 @@ const TIERS: {
             {
                 name: "Azure Static Web Apps",
                 href: `${REPO}/blob/main/public/staticwebapp.config.json`,
+            },
+            {
+                name: "Azure Container Apps",
+                href: `${REPO}/blob/main/api/terraform/container-app.tf`,
+            },
+            {
+                name: "Azure SQL + Flyway",
+                href: `${REPO}/blob/main/api/src/main/resources/db/migration/V1__create_contact_messages.sql`,
             },
             {
                 name: "Kubernetes / AKS",
@@ -80,10 +87,6 @@ export default function Skills() {
             <h2 id="skills-heading" className="mb-2">
                 Skills
             </h2>
-            <p className="section-intro mb-4">
-                Three buckets, labeled honestly. No bars, no percentages, no
-                stars.
-            </p>
 
             {TIERS.map((tier) => (
                 <div className="tier" key={tier.heading}>
@@ -105,7 +108,9 @@ export default function Skills() {
                             ),
                         )}
                     </ul>
-                    {tier.caveat && <p className="caveat mb-0">{tier.caveat}</p>}
+                    {tier.caveat && (
+                        <p className="caveat mb-0">{tier.caveat}</p>
+                    )}
                 </div>
             ))}
         </section>
