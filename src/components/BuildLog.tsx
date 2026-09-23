@@ -255,7 +255,8 @@ export default function BuildLog() {
             <li>
               Every pull request deploys to a staging environment first: the
               same build, on a preview URL of the same Static Web App, with the
-              smoke test and browser checks run against it before merge. The
+              smoke test and browser checks run against it, and a pull request
+              can&apos;t merge until they pass. The
               production deploy has its own Azure login that only the main
               branch can use.
             </li>

@@ -8,10 +8,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 5.6.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
   }
 
   # Pass the key at init time, e.g. -backend-config=backend.hcl (see backend.hcl.example): key = "api.tfstate".
