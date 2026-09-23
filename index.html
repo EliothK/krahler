@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- The profile photo needs no preload here: the prerendered page already has the <img>, and React adds its own preload for it (fetchPriority="high"). A second one here downloaded the photo twice at different sizes. -->
+    <!-- The profile photo has no preload on purpose: the prerendered <img> is found by the preload scanner straight away, and a rel="preload" here picked the wrong srcset size on phones and downloaded the photo twice. -->
     <link rel="preconnect" href="https://avatars.githubusercontent.com" />
     <!-- Fonts are only discovered once the CSS has downloaded and parsed; the headline and the paragraph under it wait on these two, so fetch them alongside the CSS instead. -->
     <link
