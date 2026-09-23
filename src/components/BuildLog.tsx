@@ -260,6 +260,12 @@ export default function BuildLog() {
               branch can use.
             </li>
             <li>
+              Terraform runs in the pipeline: a read-only plan is posted to
+              every pull request, and after merge a change waits for my
+              approval before it&apos;s applied. A weekly plan on main fails if
+              anything in Azure was changed by hand.
+            </li>
+            <li>
               The Kubernetes and Terraform setup was not thrown away. It is
               kept in the repo as a lab I can bring up and tear down on demand,
               with its own Terraform state, so it can never take the public

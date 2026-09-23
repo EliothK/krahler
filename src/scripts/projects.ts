@@ -42,7 +42,8 @@ export const PROJECTS: Project[] = [
         next: [
             "Kubernetes was more than a one-page static site needs, and I'd rather say so than pretend otherwise. The point of the first version was to build the delivery path properly, not to right-size the workload. Even with the node stopped overnight, the load balancer, public IP and registry billed around the clock, and the site was dark from 10pm to 5am. Moving to static hosting removed both problems. The AKS setup is kept in the repo as a lab I can bring up and tear down, with its own Terraform state.",
             "Staging now exists: every pull request deploys the exact build CI tested to a staging environment on the same Static Web App, and the smoke test and browser checks run there before I merge. The production deploy gets its own login, which only the main branch can use.",
-            "Still under-engineered: Terraform is applied by hand rather than by the pipeline, and staging shares the production API and database, so a contact-form test from staging is a real message. Terraform in the pipeline, with the plan posted to the PR, is next.",
+            "Terraform is in the pipeline too. Every pull request gets a plan comment from an identity that can read Azure but not change it. After merge, a change waits for my approval, then re-plans and applies only if the plan still matches what I approved. A weekly run fails if Azure has drifted from the code, which is how a hand-made change would get caught.",
+            "Still under-engineered: staging shares the production API and database, so a contact-form test from staging is a real message, and the SQL admin password lives in Terraform state, so anything that can plan can read it. A separate staging API and database, and moving that password into Key Vault, are next.",
         ],
         links: [
             { label: "The workflow", href: "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy.yml" },

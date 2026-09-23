@@ -1,0 +1,205 @@
+name: infrastructure
+
+# Terraform for the site (terraform/) and the API (api/terraform/), reviewed like code.
+#   pull_request        plan both roots with a read-only identity and post the result as one PR comment.
+#                       A change the PR didn't intend is drift: someone changed Azure outside Terraform.
+#   push to main        plan again; if a root has changes, `apply` waits for approval in the `infrastructure`
+#                       environment, re-plans, checks the plan still matches what was approved, and applies it.
+#   schedule            weekly drift check on main: fails if Azure no longer matches the code.
+#   workflow_dispatch   the same drift check, on demand.
+#
+# The AKS lab (lab/terraform) is not here. It's destroyed, so its plan would be "create everything", and it is only ever brought up by hand.
+#
+# Plan files are never uploaded as artifacts: this repo is public, and a plan file contains the SQL admin password in clear text.
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+    schedule:
+        - cron: "23 13 * * 1" # Mondays, off the hour (GitHub delays runs scheduled on the hour)
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: infrastructure-${{ github.ref }}
+    cancel-in-progress: false
+
+env:
+    TF_IN_AUTOMATION: "true"
+    TF_VERSION: 1.15.x # the state was written by 1.15; an older Terraform refuses to read it
+    ARM_USE_OIDC: "true"
+    ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    TF_VAR_deploy_principal_id: ${{ vars.TF_DEPLOY_PRINCIPAL_ID }}
+    TF_VAR_alert_email: ${{ secrets.TF_ALERT_EMAIL }} # site root only; the API root doesn't declare it, and Terraform ignores TF_VAR_ for undeclared variables
+
+jobs:
+    plan:
+        # Dependabot and fork PRs get no secrets, so they can't log in.
+        if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        permissions:
+            id-token: write # OIDC
+            contents: read
+            pull-requests: write # the plan comment
+        env:
+            # github-portfolio-plan: Reader on the subscription, Storage Blob Data Reader on the state, and a custom "Terraform plan secret reader" role
+            # (the three list-secrets actions the azurerm provider calls during refresh) on the site and API resource groups.
+            # It cannot change anything in Azure, which is also why plans run with -lock=false (taking the state lock is a write).
+            # It can read secrets, but only ones already in the state it has to read: the SWA deployment token, Log Analytics keys, the SQL admin password.
+            ARM_CLIENT_ID: ${{ vars.AZURE_PLAN_CLIENT_ID }}
+        outputs:
+            site: ${{ steps.plan.outputs.site }}
+            api: ${{ steps.plan.outputs.api }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v3.0.0
+              with:
+                  terraform_version: ${{ env.TF_VERSION }}
+                  terraform_wrapper: false # the wrapper swallows -detailed-exitcode
+
+            # For each root: exit code 0 = no changes, 2 = changes, anything else = error.
+            # A root with changes gets a fingerprint (each changed address and its actions, hashed) so `apply` can refuse a plan that differs from the one that was approved.
+            # The fingerprint is built from `terraform show -json`, which contains sensitive values in clear text, so that output only ever goes through jq and is never printed.
+            - name: Plan
+              id: plan
+              run: |
+                  # Actions runs bash with -e; turned off here because plan's non-zero exit codes are results to read, not failures.
+                  set +e -uo pipefail
+                  failed=0
+                  for root in site api; do
+                    case "$root" in
+                      site) dir=terraform; key=site.tfstate ;;
+                      api)  dir=api/terraform; key=api.tfstate ;;
+                    esac
+                    terraform -chdir="$dir" init -input=false -no-color \
+                      -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+                      -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+                      -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+                      -backend-config="key=$key" > "init-$root.txt" 2>&1 || { cat "init-$root.txt"; failed=1; echo "| \`$root\` | init failed, see the job log |" >> table.md; continue; }
+
+                    terraform -chdir="$dir" plan -input=false -no-color -lock=false -detailed-exitcode -out=tfplan > "plan-$root.txt" 2>&1
+                    code=$?
+                    case "$code" in
+                      0) result="No changes" ;;
+                      2) result=$(grep -E '^Plan:' "plan-$root.txt" || echo "Changes")
+                         fp=$(terraform -chdir="$dir" show -json tfplan | jq -c '[.resource_changes[] | select(.change.actions != ["no-op"]) | {address, actions: .change.actions}]' | sha256sum | cut -c1-16)
+                         echo "$root=$fp" >> "$GITHUB_OUTPUT" ;;
+                      *) result="**Plan failed**"; failed=1
+                         cat "plan-$root.txt" ;; # sensitive values are redacted in plan output, so the log can show it
+                    esac
+                    echo "| \`$root\` | $result |" >> table.md
+
+                    # The readable plan, without the refresh noise. On failure, the plan log itself is the useful part.
+                    if [ "$code" = 2 ]; then terraform -chdir="$dir" show -no-color tfplan > "show-$root.txt"; else cp "plan-$root.txt" "show-$root.txt"; fi
+                    {
+                      echo "<details><summary><code>$root</code> ($dir)</summary>"
+                      echo
+                      echo '```'
+                      head -c 25000 "show-$root.txt"
+                      echo '```'
+                      echo "</details>"
+                      echo
+                    } >> details.md
+                  done
+
+                  {
+                    echo "<!-- terraform-plan -->"
+                    echo "### Terraform plan"
+                    echo
+                    echo "| Root | Result |"
+                    echo "|---|---|"
+                    cat table.md
+                    echo
+                    cat details.md
+                    echo "<sub>Read-only plan of \`${GITHUB_SHA::7}\`. On merge, a root with changes waits for approval in the \`infrastructure\` environment before it's applied.</sub>"
+                  } > comment.md
+                  cat comment.md >> "$GITHUB_STEP_SUMMARY"
+                  exit "$failed"
+
+            # One comment per PR, updated on every push, so the thread doesn't fill up with stale plans.
+            - name: Post the plan to the PR
+              if: always() && github.event_name == 'pull_request' && hashFiles('comment.md') != ''
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  PR: ${{ github.event.pull_request.number }}
+              run: |
+                  id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+                    --jq '[.[] | select(.body | startswith("<!-- terraform-plan -->"))][0].id // empty')
+                  if [ -n "$id" ]; then
+                    gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md > /dev/null
+                  else
+                    gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md > /dev/null
+                  fi
+
+            # On the weekly or manual check, any change at all means Azure has drifted from the code on main.
+            - name: Fail on drift
+              if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+              run: |
+                  if [ -n "${{ steps.plan.outputs.site }}${{ steps.plan.outputs.api }}" ]; then
+                    echo "::error::Azure no longer matches Terraform on main. See the plan in the job summary."
+                    exit 1
+                  fi
+
+    apply:
+        needs: plan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.plan.outputs.site != '' || needs.plan.outputs.api != '')
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        # Requires the owner's approval, and only main can deploy to it. The plan to approve is in the `plan` job's summary.
+        environment: infrastructure
+        permissions:
+            id-token: write
+            contents: read
+        env:
+            # github-portfolio, the deploy identity: Contributor on the site and API resource groups, Blob Data Contributor on the state,
+            # Reader and Cost Management Contributor on the subscription (the budget lives in the site root).
+            # It can't change role assignments; a plan that does will fail here and has to be applied by hand.
+            ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+            EXPECTED_SITE: ${{ needs.plan.outputs.site }}
+            EXPECTED_API: ${{ needs.plan.outputs.api }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v3.0.0
+              with:
+                  terraform_version: ${{ env.TF_VERSION }}
+                  terraform_wrapper: false
+
+            - name: Re-plan, check it matches the approved plan, apply
+              run: |
+                  set -euo pipefail
+                  for root in site api; do
+                    case "$root" in
+                      site) dir=terraform; key=site.tfstate; expected="$EXPECTED_SITE" ;;
+                      api)  dir=api/terraform; key=api.tfstate; expected="$EXPECTED_API" ;;
+                    esac
+                    [ -n "$expected" ] || { echo "$root: no changes in the approved plan, skipping"; continue; }
+
+                    terraform -chdir="$dir" init -input=false -no-color \
+                      -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+                      -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+                      -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+                      -backend-config="key=$key"
+
+                    # Locked this time: this run is about to write the state.
+                    set +e
+                    terraform -chdir="$dir" plan -input=false -no-color -detailed-exitcode -out=tfplan
+                    code=$?
+                    set -e
+                    [ "$code" = 2 ] || { echo "::error::$root: expected changes, plan exited $code"; exit 1; }
+
+                    actual=$(terraform -chdir="$dir" show -json tfplan | jq -c '[.resource_changes[] | select(.change.actions != ["no-op"]) | {address, actions: .change.actions}]' | sha256sum | cut -c1-16)
+                    if [ "$actual" != "$expected" ]; then
+                      echo "::error::$root: the plan changed after it was approved ($expected -> $actual). Nothing applied; rerun the workflow to plan again."
+                      exit 1
+                    fi
+
+                    terraform -chdir="$dir" apply -input=false -no-color tfplan
+                    echo "Applied \`$root\` (plan $actual)" >> "$GITHUB_STEP_SUMMARY"
+                  done
