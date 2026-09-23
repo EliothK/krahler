@@ -36,7 +36,7 @@ function ProfileCard() {
                     height={360}
                 />
 
-                <h1 className="mb-2">Elioth Krahler</h1>
+                <h1 className="profile-name mb-2">Elioth Krahler</h1>
 
                 <p className="profile-blurb quiet mb-3">
                     CS graduate in Bismarck, ND. I build forecasting systems and
