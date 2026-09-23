@@ -20,7 +20,11 @@ export default function Experience() {
             <div className="entry">
                 <h3>DoorDash</h3>
                 <p className="when">2022 - Present</p>
-                <p>Delivery driver while completing my degree.</p>
+                <p>
+                    Independent delivery driver. Kept it going alongside a full
+                    CS degree, and now alongside my job search and the projects
+                    on this site.
+                </p>
             </div>
         </section>
     );
