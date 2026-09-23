@@ -191,6 +191,11 @@ jobs:
               # The CDN can serve the previous version for a few seconds after the deploy finishes, so retry once before failing.
               run: npm run smoke || { sleep 45; npm run smoke; }
 
+            - name: Browser checks
+              env:
+                  SMOKE_URL: https://krahler.com
+              run: npm run browser
+
             - name: Lighthouse thresholds
               env:
                   SMOKE_URL: https://krahler.com
