@@ -61,8 +61,9 @@ export default function App() {
 
                         <footer>
                             <p className="mb-0">
-                                Built with React and Vite, provisioned with
-                                Terraform, deployed to Azure Static Web Apps by
+                                Built with React and Vite and a Spring Boot
+                                API, provisioned with Terraform, deployed to
+                                Azure Static Web Apps and Container Apps by
                                 GitHub Actions on every push to main. It ran on
                                 Kubernetes first; the{" "}
                                 <a href="/build">build log</a> covers both.
