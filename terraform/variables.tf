@@ -13,6 +13,7 @@ variable "location" {
 variable "alert_email" {
   description = "Email address for budget notifications."
   type        = string
+  sensitive   = true # plans are posted to public PRs and logs; keep the address out of them
 }
 
 variable "deploy_principal_id" {
