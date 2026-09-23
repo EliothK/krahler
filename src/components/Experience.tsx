@@ -7,7 +7,7 @@ export default function Experience() {
 
             <div className="entry">
                 <h3>Resource Revolution — Refresh Technician</h3>
-                <p className="when">2020-2021</p>
+                <p className="when">2021-2022</p>
                 <p>
                     Led the Refresh team through a hardware refresh cycle. Wrote
                     PowerShell to automate the refresh process, replacing a
