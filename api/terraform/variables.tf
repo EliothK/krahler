@@ -22,7 +22,7 @@ variable "image" {
 }
 
 variable "allowed_origins" {
-  description = "Origins the browser may call the API from (CORS)."
+  description = "Origins the browser may call the API from (CORS). Initial value only: env changes are ignored after creation, and .github/workflows/api.yml sets the live list on every deploy."
   type        = string
   default     = "https://krahler.com,https://www.krahler.com"
 }

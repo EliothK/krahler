@@ -41,7 +41,8 @@ export const PROJECTS: Project[] = [
         ],
         next: [
             "Kubernetes was more than a one-page static site needs, and I'd rather say so than pretend otherwise. The point of the first version was to build the delivery path properly, not to right-size the workload. Even with the node stopped overnight, the load balancer, public IP and registry billed around the clock, and the site was dark from 10pm to 5am. Moving to static hosting removed both problems. The AKS setup is kept in the repo as a lab I can bring up and tear down, with its own Terraform state.",
-            "Still under-engineered: no staging environment, and Terraform applied by hand rather than by the pipeline. A bad deploy fails the post-deploy checks and a scheduled uptime workflow opens an issue, but by then it's already live. Staging environment first - it's the one whose absence I'd actually feel.",
+            "Staging now exists: every pull request deploys the exact build CI tested to a staging environment on the same Static Web App, and the smoke test and browser checks run there before I merge. The production deploy gets its own login, which only the main branch can use.",
+            "Still under-engineered: Terraform is applied by hand rather than by the pipeline, and staging shares the production API and database, so a contact-form test from staging is a real message. Terraform in the pipeline, with the plan posted to the PR, is next.",
         ],
         links: [
             { label: "The workflow", href: "https://github.com/EliothK/krahler/blob/main/.github/workflows/deploy.yml" },

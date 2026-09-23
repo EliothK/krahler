@@ -253,6 +253,13 @@ export default function BuildLog() {
               it on recovery.
             </li>
             <li>
+              Every pull request deploys to a staging environment first: the
+              same build, on a preview URL of the same Static Web App, with the
+              smoke test and browser checks run against it before merge. The
+              production deploy has its own Azure login that only the main
+              branch can use.
+            </li>
+            <li>
               The Kubernetes and Terraform setup was not thrown away. It is
               kept in the repo as a lab I can bring up and tear down on demand,
               with its own Terraform state, so it can never take the public
