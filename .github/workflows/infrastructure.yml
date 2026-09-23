@@ -47,8 +47,10 @@ jobs:
             contents: read
             pull-requests: write # the plan comment
         env:
-            # github-portfolio-plan: Reader on the subscription and Storage Blob Data Reader on the state. It cannot change anything in Azure,
-            # which is also why plans run with -lock=false (taking the state lock is a write).
+            # github-portfolio-plan: Reader on the subscription, Storage Blob Data Reader on the state, and a custom "Terraform plan secret reader" role
+            # (the three list-secrets actions the azurerm provider calls during refresh) on the site and API resource groups.
+            # It cannot change anything in Azure, which is also why plans run with -lock=false (taking the state lock is a write).
+            # It can read secrets, but only ones already in the state it has to read: the SWA deployment token, Log Analytics keys, the SQL admin password.
             ARM_CLIENT_ID: ${{ vars.AZURE_PLAN_CLIENT_ID }}
         outputs:
             site: ${{ steps.plan.outputs.site }}
@@ -155,8 +157,9 @@ jobs:
             id-token: write
             contents: read
         env:
-            # github-portfolio, the deploy identity: Contributor on the site and API resource groups, Blob Data Contributor on the state.
-            # It can't change role assignments or the subscription budget; a plan that does will fail here and has to be applied by hand.
+            # github-portfolio, the deploy identity: Contributor on the site and API resource groups, Blob Data Contributor on the state,
+            # Reader and Cost Management Contributor on the subscription (the budget lives in the site root).
+            # It can't change role assignments; a plan that does will fail here and has to be applied by hand.
             ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
             EXPECTED_SITE: ${{ needs.plan.outputs.site }}
             EXPECTED_API: ${{ needs.plan.outputs.api }}
