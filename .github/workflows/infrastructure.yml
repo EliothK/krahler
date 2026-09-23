@@ -67,9 +67,9 @@ jobs:
             - name: Plan
               id: plan
               run: |
-                  set -uo pipefail
+                  # Actions runs bash with -e; turned off here because plan's non-zero exit codes are results to read, not failures.
+                  set +e -uo pipefail
                   failed=0
-                  : > comment.md
                   for root in site api; do
                     case "$root" in
                       site) dir=terraform; key=site.tfstate ;;
@@ -88,7 +88,8 @@ jobs:
                       2) result=$(grep -E '^Plan:' "plan-$root.txt" || echo "Changes")
                          fp=$(terraform -chdir="$dir" show -json tfplan | jq -c '[.resource_changes[] | select(.change.actions != ["no-op"]) | {address, actions: .change.actions}]' | sha256sum | cut -c1-16)
                          echo "$root=$fp" >> "$GITHUB_OUTPUT" ;;
-                      *) result="**Plan failed**"; failed=1 ;;
+                      *) result="**Plan failed**"; failed=1
+                         cat "plan-$root.txt" ;; # sensitive values are redacted in plan output, so the log can show it
                     esac
                     echo "| \`$root\` | $result |" >> table.md
 
