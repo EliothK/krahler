@@ -27,6 +27,16 @@ variable "allowed_origins" {
   default     = "https://krahler.com,https://www.krahler.com"
 }
 
+variable "sql_entra_admin_login" {
+  description = "Display name of the Entra user who administers Azure SQL (creates the API's database user)."
+  type        = string
+}
+
+variable "sql_entra_admin_object_id" {
+  description = "Object ID of that Entra user."
+  type        = string
+}
+
 variable "domain" {
   description = "Custom hostname for the API."
   type        = string

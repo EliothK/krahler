@@ -19,6 +19,13 @@ resource "azurerm_mssql_server" "api" {
   administrator_login_password = random_password.sql_admin.result
   minimum_tls_version          = "1.2"
   tags                         = var.tags
+
+  # Entra (Azure AD) admin, so the API can sign in with its managed identity instead of a password.
+  # The admin creates the app's database user once: CREATE USER [ca-portfolio-api] FROM EXTERNAL PROVIDER.
+  azuread_administrator {
+    login_username = var.sql_entra_admin_login
+    object_id      = var.sql_entra_admin_object_id
+  }
 }
 
 resource "azurerm_mssql_database" "api" {

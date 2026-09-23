@@ -38,6 +38,11 @@ resource "azurerm_container_app" "api" {
   revision_mode                = "Single"
   tags                         = var.tags
 
+  # Signs in to Azure SQL as itself (database user [ca-portfolio-api]), so there is no database password to store.
+  identity {
+    type = "SystemAssigned"
+  }
+
   template {
     min_replicas = 0
     max_replicas = 1 # one is plenty, and a hard ceiling on cost if something floods it
