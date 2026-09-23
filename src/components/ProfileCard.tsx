@@ -1,3 +1,5 @@
+import SectionNav from "./SectionNav";
+
 // Served from GitHub so the photo does not have to live in the repo. Keep the CSP img-src (public/staticwebapp.config.json; lab/security.conf for the AKS lab) and the preload in index.html in sync.
 const PROFILE_PIC = "https://avatars.githubusercontent.com/u/175250448?v=4&s=320";
 
@@ -23,12 +25,13 @@ const LINKS = [
     },
 ];
 
+// Three regions (photo, identity, links) that the stylesheet rearranges per screen size: a compact header on phones, a horizontal strip on tablets, a sticky column on desktop.
 function ProfileCard() {
     return (
         <div className="profile-sticky">
-            <div className="profile-card p-4 p-lg-4">
+            <div className="profile-card">
                 <img
-                    className="profile-photo mb-1"
+                    className="profile-photo"
                     src={PROFILE_PIC}
                     fetchPriority="high"
                     alt="Elioth Krahler"
@@ -36,21 +39,23 @@ function ProfileCard() {
                     height={360}
                 />
 
-                <h1 className="profile-name mb-2">Elioth Krahler</h1>
+                <div className="profile-id">
+                    <h1 className="profile-name mb-2">Elioth Krahler</h1>
 
-                <p className="profile-blurb quiet mb-3">
-                    CS graduate in Bismarck, ND. I build forecasting systems and
-                    the delivery pipelines that put them in production.
-                </p>
+                    <p className="profile-blurb quiet mb-2">
+                        CS graduate in Bismarck, ND. I build forecasting systems
+                        and the delivery pipelines that put them in production.
+                    </p>
 
-                <p className="profile-status mb-3">
-                    <span className="status-dot" aria-hidden="true" />
-                    Open to DevOps, Fullstack, and backend roles
-                </p>
-                <p className="profile-blurb quiet mb-3">
-                    Looking for remote work, and open to relocating.
-                </p>
-                <ul className="profile-links rule-top">
+                    <p className="profile-status mb-2">
+                        <span className="status-dot" aria-hidden="true" />
+                        Open to DevOps, Fullstack, and backend roles
+                    </p>
+                    <p className="profile-blurb quiet mb-0">
+                        Looking for remote work, and open to relocating.
+                    </p>
+                </div>
+                <ul className="profile-links">
                     {LINKS.map((l) => (
                         <li key={l.href}>
                             <a
@@ -69,6 +74,7 @@ function ProfileCard() {
                     ))}
                 </ul>
             </div>
+            <SectionNav />
         </div>
     );
 }

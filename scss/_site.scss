@@ -10,11 +10,13 @@
     // Decorative only: the darkest stops fall below body-text contrast, so the sheen is kept to the name, the top rule and the favicon, never small text.
     --sheen: linear-gradient(100deg, #5b74ff 0%, #9a6bff 45%, #33c9b9 100%);
 
-    --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+    // @fontsource-variable registers the face as "... Variable"; without that name every heading silently fell back to the system font.
+    --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
     --font-body: "IBM Plex Sans", system-ui, sans-serif;
     --font-data: "IBM Plex Mono", system-ui, sans-serif;
 
-    --measure: 64ch;
+    // Running text stops here even on wide screens: much past ~80 characters a line gets hard to track back from. Lists, cards and grids ignore it and fill the column.
+    --measure: 80ch;
 
     --bs-body-bg: var(--night);
     --bs-body-color: var(--ink);
@@ -34,15 +36,29 @@
 body {
     background: var(--night);
     color: var(--ink);
-    border-top: 3px solid transparent;
-    border-image: var(--sheen) 1;
+}
+
+// The sheen rule across the top doubles as a reading-progress bar where the browser supports scroll-driven animation; elsewhere it's a static full-width line.
+body::before {
+    content: "";
+    position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0;
+    height: 3px; z-index: 1090;
+    background: var(--sheen);
+    transform-origin: 0 50%;
+    pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+        body::before { animation: read-progress linear both; animation-timeline: scroll(root); }
+        @keyframes read-progress { from { transform: scaleX(0.02); } to { transform: scaleX(1); } }
+    }
 }
 
 .container-xl {
-    margin-left: 15%;
-    margin-right: 0;
-    max-width: 1600px;
-    width: 85%;
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 3vw, 2.5rem);
 }
 
 h1,h2,h3,h4 {
@@ -63,7 +79,7 @@ a{ text-underline-offset: 3px; text-decoration-thickness: 1px;}
 .quiet {color: var(--ink-quiet);}
 .mono {font-family: var(--font-data);}
 .rule-top{border-top: 1px solid var(--rule);}
-.section-intro {color: var(--ink-quiet); font-size: 0.9375rem; max-width: 58ch;}
+.section-intro {color: var(--ink-quiet); font-size: 0.9375rem; max-width: var(--measure);}
 
 .skip{position: absolute; left: -9999px;}
 .skip:focus {
@@ -76,23 +92,71 @@ section.band {padding:3.5rem 0;}
 section.band + section.band {border-top: 1px solid var(--rule);}
 footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--ink-quiet); font-size: 0.9rem;}
 
-// Profile
-@include media-breakpoint-up(lg){
-    .profile-sticky {position: sticky; top: 1rem;}
-}
+// Profile: one card, three arrangements.
+// Phone: a compact header (small photo beside the name, links below).
+// Tablet: a single horizontal strip. Desktop: a sticky column with the section nav under it.
 .profile-card{
     background: var(--night-raised);
     border: 1px solid var(--rule);
     border-radius: 6px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "photo id" "links links";
+    gap: 0.75rem 1rem;
+    align-items: start;
 }
 .profile-photo{
+    grid-area: photo;
     display: block;
-    width: 100%; max-width: 240px; height: auto;
+    width: 72px; height: auto;
     aspect-ratio: 1 / 1;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid var(--rule);
 }
+.profile-id { grid-area: id; min-width: 0; }
+.profile-links { grid-area: links; border-top: 1px solid var(--rule); }
+.profile-name { font-size: 1.6rem; }
+
+@include media-breakpoint-up(md){
+    .profile-card {
+        padding: 1.5rem;
+        grid-template-columns: auto minmax(0, 1fr) minmax(14rem, 18rem);
+        grid-template-areas: "photo id links";
+        gap: 1.5rem;
+    }
+    .profile-photo { width: 120px; }
+    .profile-links { border-top: 0; border-left: 1px solid var(--rule); padding-left: 1.5rem; }
+}
+
+@include media-breakpoint-up(lg){
+    .profile-sticky {position: sticky; top: 1.25rem;}
+    .profile-card {
+        grid-template-columns: 1fr;
+        grid-template-areas: "photo" "id" "links";
+        gap: 1rem;
+    }
+    .profile-photo { width: 100%; max-width: 240px; }
+    .profile-links { border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); }
+    .profile-name { font-size: clamp(1.75rem, 2.4vw, 2.25rem); }
+}
+
+// Section nav: desktop only, in the sticky column. Phones and tablets read top to bottom without it.
+.section-nav { display: none; }
+@include media-breakpoint-up(lg){
+    .section-nav { display: block; margin-top: 1.25rem; padding-left: 0.25rem; }
+}
+.section-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.section-nav a {
+    display: block; padding: 0.3rem 0 0.3rem 0.85rem;
+    font-size: 0.875rem; color: var(--ink-quiet); text-decoration: none;
+    border-left: 2px solid var(--rule);
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.section-nav a[aria-current="location"] { color: var(--ink); border-left-color: var(--flux); }
+// Anchored headings clear the top edge instead of sitting flush against it.
+h2[id] { scroll-margin-top: 1.5rem; }
 .profile-name {
     font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
     width: fit-content;
@@ -113,7 +177,7 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     display: block; padding: 0.55rem 0;
     font-size: 0.95rem; text-decoration: none; color: var(--ink);
 }
-.profile-links a:hover, .profile-links a:focus-visible {color: var(--flux);}
+.profile-links a:focus-visible {color: var(--flux);}
 .profile-links .hint {display: block; font-size: 0.825rem; color:var(--ink-quiet); line-height: 1.5;}
 
 // Hero
@@ -124,7 +188,11 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     letter-spacing: -0.02em;
     text-wrap: balance;
 }
-.lede-sub{ max-width: 56ch;}
+.lede-sub{
+    max-width: var(--measure);
+    font-size: clamp(1.05rem, 0.8rem + 1vw, 1.4rem);
+    line-height: 1.6;
+}
 .hero-svg{display:block;width: 100%; height: auto;max-width: 700px;}
 .trace{fill: none; stroke-width: 1.6; stroke-linecap: round;}
 .axis{ stroke: var(--rule); stroke-width: 1;}
@@ -159,7 +227,23 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
 .rail::-webkit-scrollbar {height: 6px;}
 .rail::-webkit-scrollbar-thumb {background: var(--rule); border-radius: 3px;}
 
-.rail-item{flex:0 0 min(100%, 21rem); scroll-snap-align: start;}
+// Grows to share the row when every card fits; below that each keeps its 19rem and the rail scrolls.
+// On a phone a card takes most of the width, and the edge of the next one shows so it's obvious you can swipe.
+.rail-item{flex:1 0 min(86%, 19rem); scroll-snap-align: start;}
+.proj-card { transition: border-color 0.2s ease, transform 0.2s ease; }
+
+// Cards rise into place as the row scrolls into view.
+// Driven by scroll position, not a JS observer, and they start partly visible, so a screenshot or a browser without support still shows every card.
+@supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+        .rail { view-timeline: --rail block; }
+        .rail-item { animation: card-rise linear both; animation-timeline: --rail; }
+        .rail-item:nth-child(1) { animation-range: entry 0% entry 70%; }
+        .rail-item:nth-child(2) { animation-range: entry 10% entry 80%; }
+        .rail-item:nth-child(3) { animation-range: entry 20% entry 90%; }
+        @keyframes card-rise { from { opacity: 0.35; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }
+    }
+}
 .proj-card{
     height: 100%; width: 100%;
     display: flex; flex-direction: column;
@@ -167,7 +251,6 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     border: 1px solid var(--rule); border-radius: 6px;
     padding: 1.25rem; text-align: left; color: inherit;cursor: pointer;
 }
-.profile-card:hover {border-color: var(--solar);}
 .proj-title {font-size: 1.15rem;}
 .proj-stack {font-size: 0.8rem; color:var(--ink-quiet); margin: 0.35rem 0 0.75rem;}
 .proj-sum {font-size:0.95rem; margin: 0 0 1rem; max-width: none; flex:1;}
@@ -189,7 +272,6 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     border: 1px solid var(--rule); background: transparent;
     color: var(--ink); line-height: 1; font-size: 1.1rem;
 }
-.rail-btn:hover:not(:disabled) { border-color: var(--solar); color: var(--solar); }
 .rail-btn:disabled { opacity: 0.3; }
 .rail-count { font-family: var(--font-data); font-size: 0.82rem; color: var(--ink-quiet); }
 
@@ -224,17 +306,15 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
     background: transparent; border: 1px solid var(--rule); border-radius: 4px;
     color: var(--ink-quiet); width: 32px; height: 32px; flex: 0 0 auto; line-height: 1;
 }
-.x-btn:hover { color: var(--ink); border-color: var(--solar); }
 
 // Recent work
-.work-list { list-style: none; margin: 0; padding: 0; max-width: var(--measure); }
+.work-list { list-style: none; margin: 0; padding: 0; }
 .work-list li {
     padding: 0.9rem 0; border-bottom: 1px solid var(--rule);
     display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
 }
 .work-list li:first-child { border-top: 1px solid var(--rule); }
 .work-repo { font-family: var(--font-data); font-size: 0.95rem; color: var(--flux); text-decoration: none; }
-.work-repo:hover { color: var(--ink); }
 .work-commits { font-family: var(--font-data); font-size: 0.83rem; color: var(--ink-quiet); }
 .work-meta { font-size: 0.83rem; color: var(--ink-quiet); margin-left: auto; white-space: nowrap; }
 .work-desc { flex: 1 1 100%; font-size: 0.9rem; color: var(--ink-quiet); margin: 0.15rem 0 0; }
@@ -251,7 +331,7 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
 }
 
 // Skill / Experience
-.tier { margin-bottom: 2.25rem; max-width: var(--measure); }
+.tier { margin-bottom: 2.25rem; }
 .tier h3 { font-size: 1.07rem; margin-bottom: 0.25rem; }
 .tier .caveat { color: var(--ink-quiet); font-size: 0.9rem; margin-bottom: 0.5rem; }
 .tier ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
@@ -263,7 +343,7 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
 .entry h3 { font-size: 1.07rem; }
 .entry .when { color: var(--ink-quiet); font-size: 0.9rem; margin: 0.15rem 0 0.5rem; }
 .entry p:not(.when) { font-size: 0.95rem; color: var(--ink-quiet); }
-.certs { list-style: none; margin: 0; padding: 0; max-width: var(--measure); }
+.certs { list-style: none; margin: 0; padding: 0; }
 .certs li { padding: 0.7rem 0; border-bottom: 1px solid var(--rule); font-size: 0.95rem; }
 .certs li:first-child { border-top: 1px solid var(--rule); }
 
@@ -281,3 +361,24 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
 .arch-sublabel { fill: var(--ink-quiet); font-family: var(--font-body); font-size: 11px; }
 .arch-edge { stroke: var(--ink-quiet); stroke-width: 1.5; fill: none; }
 .arch-arrowhead { fill: var(--ink-quiet); }
+
+// Hover effects only where there's a real pointer that can hover.
+// On touch screens a tap would otherwise leave them stuck on.
+@media (hover: hover) and (pointer: fine) {
+    .profile-links a:hover { color: var(--flux); }
+    .proj-card:hover { border-color: #3a3d52; transform: translateY(-2px); }
+    .rail-btn:hover:not(:disabled) { border-color: var(--solar); color: var(--solar); }
+    .x-btn:hover { color: var(--ink); border-color: var(--solar); }
+    .work-repo:hover { color: var(--ink); }
+    .section-nav a:hover { color: var(--ink); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .proj-card, .section-nav a { transition: none; }
+    .proj-card:hover { transform: none; }
+}
+
+// Touch screens: controls at least 44px, the size a fingertip can hit reliably.
+@media (pointer: coarse) {
+    .rail-btn, .x-btn { width: 44px; height: 44px; }
+    .profile-links a { padding-block: 0.75rem; }
+}
