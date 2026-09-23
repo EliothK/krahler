@@ -2,18 +2,11 @@
 <html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- The profile photo is rendered by React, so without these the browser only finds it after the JS bundle runs. Keep the URLs in sync with PROFILE_SRCSET and PROFILE_SIZES in ProfileCard.tsx. -->
+    <!-- The profile photo needs no preload here: the prerendered page already has the <img>, and React adds its own preload for it (fetchPriority="high"). A second one here downloaded the photo twice at different sizes. -->
     <link rel="preconnect" href="https://avatars.githubusercontent.com" />
-    <link
-      rel="preload"
-      as="image"
-      href="https://avatars.githubusercontent.com/u/175250448?v=4&s=320"
-      imagesrcset="https://avatars.githubusercontent.com/u/175250448?v=4&s=160 160w, https://avatars.githubusercontent.com/u/175250448?v=4&s=240 240w, https://avatars.githubusercontent.com/u/175250448?v=4&s=320 320w"
-      imagesizes="(min-width: 992px) 240px, (min-width: 768px) 120px, 72px"
-      fetchpriority="high"
-    />
-    <!-- The display font is only discovered once the CSS has downloaded and parsed; the headline waits on it, so fetch it alongside the CSS instead. -->
+    <!-- Fonts are only discovered once the CSS has downloaded and parsed; the headline and the paragraph under it wait on these two, so fetch them alongside the CSS instead. -->
     <link
       rel="preload"
       as="font"
@@ -21,7 +14,13 @@
       crossorigin
       href="/node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2"
     />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2"
+    />
     <meta name="theme-color" content="#0e0f14" />
     <title>Elioth Krahler - DevOps, Fullstack and Backend Developer</title>
     <meta

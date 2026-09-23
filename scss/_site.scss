@@ -100,6 +100,8 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--i
     gap: 0.75rem 1rem;
     align-items: start;
 }
+// The <picture> wrapper takes no box of its own, so the img stays a direct grid item of the card.
+.profile-card > picture { display: contents; }
 .profile-photo{
     grid-area: photo;
     display: block;
