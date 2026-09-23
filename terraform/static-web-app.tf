@@ -16,10 +16,11 @@ resource "azurerm_resource_group" "web" {
 resource "azurerm_static_web_app" "portfolio" {
   name                = "swa-${var.project}"
   resource_group_name = azurerm_resource_group.web.name
-  location            = azurerm_resource_group.web.location # Free tier is only offered in a few regions; centralus is one
-  sku_tier            = "Free"
-  sku_size            = "Free"
-  tags                = var.tags
+  location            = azurerm_resource_group.web.location # Static Web Apps is only offered in a few regions; centralus is one
+  # Standard, upgraded by hand in the portal and matched here so an apply doesn't downgrade it. Free allows 3 preview environments; Standard allows 10 (the `staging` one used by deploy.yml is one).
+  sku_tier = "Standard"
+  sku_size = "Standard"
+  tags     = var.tags
 
   lifecycle {
     prevent_destroy = true

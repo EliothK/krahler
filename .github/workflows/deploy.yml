@@ -1,7 +1,7 @@
 name: deploy
 
 # Production pipeline for krahler.com (Azure Static Web Apps).
-#   pull_request        ci + terraform checks only, nothing is deployed
+#   pull_request        ci + terraform checks, then deploy to the `staging` preview environment and run the smoke and browser checks there; production is untouched
 #   push to main        ci + terraform checks, then deploy, then smoke test and Lighthouse against the live site
 #   workflow_dispatch   redeploy without a new commit
 #
@@ -120,6 +120,85 @@ jobs:
               run: |
                   echo "terraform-validate: ${{ needs.terraform-validate.result }}"
                   [ "${{ needs.terraform-validate.result }}" = "success" ]
+
+    # Staging: every PR deploys the exact build ci tested to a fixed `staging` preview environment of the same Static Web App, then runs the live-site checks against it, so a broken build shows up before merge rather than after the production deploy.
+    # One fixed environment rather than one per PR: every PR comes from dev, so staging is always "what's about to ship", and there is nothing to clean up.
+    # Skipped for Dependabot and fork PRs, which get no secrets. Lighthouse stays on production only; preview scores are noisier.
+    staging:
+        needs: [ci]
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment:
+            name: staging
+            url: ${{ steps.site.outputs.url }}
+        # Two PRs updating staging at once would race, and the checks could end up testing the other PR's build.
+        concurrency:
+            group: staging
+            cancel-in-progress: false
+        permissions:
+            id-token: write # OIDC; the federated credential trusts environment:staging, not this branch
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - run: npm ci
+
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: site-dist
+                  path: dist
+
+            - name: Authenticate to Azure
+              uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v2.0.0
+              with:
+                  client-id: ${{secrets.AZURE_CLIENT_ID}}
+                  tenant-id: ${{secrets.AZURE_TENANT_ID}}
+                  subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+            - name: Get deployment token
+              id: token
+              run: |
+                  token=$(az staticwebapp secrets list \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query properties.apiKey -o tsv)
+                  echo "::add-mask::$token"
+                  echo "token=$token" >> "$GITHUB_OUTPUT"
+
+            - name: Deploy to the staging environment
+              env:
+                  SWA_CLI_DEPLOYMENT_TOKEN: ${{ steps.token.outputs.token }}
+              run: npx --yes @azure/static-web-apps-cli@2.0.10 deploy ./dist --env staging
+
+            - name: Find the staging URL
+              id: site
+              run: |
+                  host=$(az staticwebapp environment list \
+                    --name "${{ vars.SWA_NAME }}" \
+                    --resource-group "${{ vars.SWA_RESOURCE_GROUP }}" \
+                    --query "[?contains(hostname, '-staging.')].hostname | [0]" -o tsv)
+                  [ -n "$host" ] || { echo "No staging environment found"; exit 1; }
+                  echo "url=https://$host" >> "$GITHUB_OUTPUT"
+                  echo "Staging: https://$host" >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Wait for staging to answer
+              run: curl -sf --retry 10 --retry-delay 5 --retry-all-errors -o /dev/null "${{ steps.site.outputs.url }}/"
+
+            - name: Smoke test staging
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run smoke || { sleep 45; npm run smoke; }
+
+            - name: Browser checks on staging
+              env:
+                  SMOKE_URL: ${{ steps.site.outputs.url }}
+              run: npm run browser
 
     deploy:
         needs: [ci, terraform]
