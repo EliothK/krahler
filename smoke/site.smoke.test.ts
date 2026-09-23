@@ -156,13 +156,17 @@ describe(`smoke: ${BASE}`, () => {
     });
 
     describe("profile photo", () => {
-        it("is preloaded from the shell so it starts before React runs", () => {
-            expect(indexHtml).toMatch(
-                new RegExp(`rel="preconnect"[^>]*${AVATAR_HOST.replace(/\./g, "\\.")}`),
-            );
-            expect(indexHtml).toMatch(
-                new RegExp(`rel="preload"[^>]*as="image"[^>]*${AVATAR_HOST.replace(/\./g, "\\.")}`),
-            );
+        // The prerendered <img> is in the HTML, so the browser's preload scanner starts it before React runs. A separate rel="preload" used to sit here too, and it downloaded the photo a second time at the wrong srcset size on phones.
+        it("is in the prerendered HTML so it starts before React runs", () => {
+            const host = AVATAR_HOST.replace(/\./g, "\\.");
+            expect(indexHtml).toMatch(new RegExp(`rel="preconnect"[^>]*${host}`));
+            expect(indexHtml).toMatch(new RegExp(`<source[^>]*srcSet="https://${host}/[^"]*s=160 160w`, "i"));
+            expect(indexHtml).toMatch(new RegExp(`<img[^>]*class="profile-photo"[^>]*src="https://${host}/`));
+        });
+
+        it("isn't also preloaded, which would download it twice", () => {
+            const host = AVATAR_HOST.replace(/\./g, "\\.");
+            expect(indexHtml).not.toMatch(new RegExp(`rel="preload"[^>]*as="image"[^>]*${host}`));
         });
 
         it("resolves to an image", async () => {
