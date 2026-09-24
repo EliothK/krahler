@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,6 +48,15 @@ class ApiIntegrationTest {
 
     @Autowired
     ContactController contactController;
+
+    @Autowired
+    LazySchemaMigrator schema;
+
+    // Several tests read the repository before their first submission, and the schema now only appears on first use.
+    @BeforeEach
+    void migrate() {
+        schema.ensureMigrated();
+    }
 
     // Real network calls to smtp.gmail.com have no place in a test run. Records what was sent instead.
     @org.springframework.boot.test.context.TestConfiguration

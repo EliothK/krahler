@@ -42,15 +42,18 @@ class ContactController {
     private final String notifyTo;
     private final ContactMessageRepository messages;
     private final Clock clock;
+    private final LazySchemaMigrator schema;
 
     ContactController(
-            ApiProperties properties, Clock clock, JavaMailSender mailSender, ContactMessageRepository messages) {
+            ApiProperties properties, Clock clock, JavaMailSender mailSender, ContactMessageRepository messages,
+            LazySchemaMigrator schema) {
         var limit = properties.contactRateLimit();
         this.limiter = new RateLimiter(limit.maxRequests(), limit.window(), clock);
         this.clock = clock;
         this.mailSender = mailSender;
         this.notifyTo = properties.contactNotifyTo();
         this.messages = messages;
+        this.schema = schema;
     }
 
     @PostMapping("/api/contact")
@@ -59,6 +62,8 @@ class ContactController {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "3600").build();
         }
         // Sweep any previously-failed sends first: this is the only place retries happen (see retryUnemailed()'s comment for why there's no background schedule), so a new submission is also the trigger that gives an old one another chance.
+        // First database access since this replica started: nothing before this point connects (see LazySchemaMigrator).
+        schema.ensureMigrated();
         retryUnemailed();
         // Stored first: whatever happens to the email next, the message itself is now durable.
         var saved = messages.save(new ContactMessage(request.name(), request.email(), request.message(), Instant.now(clock)));
@@ -102,8 +107,8 @@ class ContactController {
     }
 
     // Azure Container Apps appends the real client IP to X-Forwarded-For rather than replacing it, so the rightmost entry is the one Azure itself observed;
-    // anything to its left is whatever the caller chose to send and rate-limits on it trivially (Microsoft's own ingress docs confirm this:
-    // "Only the rightmost IP is provided by Azure Container Apps. Any other values must be validated by the user to prevent IP spoofing.").
+    // anything to its left is whatever the caller chose to send and rate-limits on it trivially (Microsoft's own ingress docs confirm this: "Only the rightmost IP is provided by Azure Container Apps.
+    // Any other values must be validated by the user to prevent IP spoofing.").
     // Taking the first entry, as this used to, let a client defeat the rate limit outright by sending a different fake leftmost value on every request.
     private static String clientKey(HttpServletRequest http) {
         String forwarded = http.getHeader("X-Forwarded-For");

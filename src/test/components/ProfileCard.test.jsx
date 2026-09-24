@@ -9,13 +9,16 @@ describe("ProfileCard", () => {
         ).toBeInTheDocument();
     });
 
-    it("links to GitHub, email, and the build page", () => {
+    it("links to GitHub, LinkedIn, email, and the build page", () => {
         render(<ProfileCard />);
         const links = screen.getAllByRole("link");
         const hrefs = links.map((l) => l.getAttribute("href"));
         expect(hrefs.some((h) => h?.startsWith("https://github.com/"))).toBe(
             true,
         );
+        expect(
+            hrefs.some((h) => h?.startsWith("https://www.linkedin.com/in/")),
+        ).toBe(true);
         expect(hrefs.some((h) => h?.startsWith("mailto:"))).toBe(true);
         expect(hrefs).toContain("/build");
     });
