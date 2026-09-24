@@ -18,6 +18,11 @@ const LINKS = [
         hint: "Source for everything below",
     },
     {
+        href: "https://www.linkedin.com/in/elioth-krahler-a9215843a/",
+        label: "LinkedIn",
+        hint: "Work history and background",
+    },
+    {
         href: `mailto:${CONTACT_EMAIL}`,
         label: `Email me @ ${CONTACT_EMAIL}`,
         hint: "Fastest way to reach me",
