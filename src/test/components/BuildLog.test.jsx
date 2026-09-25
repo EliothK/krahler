@@ -35,4 +35,17 @@ describe("BuildLog", () => {
             screen.getByRole("heading", { name: /what's running right now/i }),
         ).toBeInTheDocument();
     });
+
+    it("includes the pipeline flow and the database sleep story", () => {
+        render(<BuildLog />);
+        expect(
+            screen.getByRole("heading", { name: /how a change gets there/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /why the database never slept/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /only half of it/i }),
+        ).toBeInTheDocument();
+    });
 });

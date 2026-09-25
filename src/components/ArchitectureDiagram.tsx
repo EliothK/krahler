@@ -61,7 +61,7 @@ export default function ArchitectureDiagram() {
                 Static Web Apps
             </text>
             <text x="140" y="152" className="arch-sublabel" textAnchor="middle">
-                prerendered React, CDN, Free tier
+                prerendered React, CDN, staging env
             </text>
 
             {/* Container App */}
