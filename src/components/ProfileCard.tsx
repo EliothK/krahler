@@ -62,7 +62,7 @@ function ProfileCard() {
 
                     <p className="profile-status mb-2">
                         <span className="status-dot" aria-hidden="true" />
-                        Open to DevOps, Fullstack, and backend roles
+                        Open to ML researcher, DevOps, Fullstack, and backend roles
                     </p>
                     <p className="profile-blurb quiet mb-0">
                         Looking for remote work, and open to relocating.
