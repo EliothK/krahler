@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Project } from "../scripts/projects";
+import SleepTimeline from "./SleepTimeline";
 
 type Props = { project: Project | null; onClose: () => void };
 
@@ -47,6 +48,16 @@ function ProjectDialog({ project, onClose }: Props) {
               <p key={i}>{t}</p>
             ))}
           </section>
+          {project.feature ? (
+            <section className="feature">
+              <h4>{project.feature.heading}</h4>
+              <p>{project.feature.text}</p>
+              {project.feature.diagram === "sleep-timeline" && <SleepTimeline />}
+              <p>
+                <a href={project.feature.href}>{project.feature.linkLabel}</a>
+              </p>
+            </section>
+          ) : null}
           <section className="autopsy">
             <h4>Autopsy</h4>
             {project.autopsy.map((t, i) => (
@@ -67,8 +78,10 @@ function ProjectDialog({ project, onClose }: Props) {
                   <a
                     key={l.href}
                     href={l.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    // Pages on this site open in place, like the profile card's links.
+                    {...(l.href.startsWith("/")
+                      ? {}
+                      : { target: "_blank", rel: "noopener noreferrer" })}
                   >
                     {l.label}
                   </a>

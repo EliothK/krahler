@@ -29,8 +29,8 @@ const LINKS = [
     },
     {
         href: "/build",
-        label: "How this site gets deployed",
-        hint: "From Kubernetes to static hosting, with the build log",
+        label: "How this site is built and run",
+        hint: "Architecture, pipeline and the bugs I fixed",
     },
 ];
 
@@ -73,7 +73,8 @@ function ProfileCard() {
                         <li key={l.href}>
                             <a
                                 href={l.href}
-                                {...(l.href.startsWith("mailto:")
+                                // Only other sites open in a new tab; email and pages on this site behave like normal links.
+                                {...(l.href.startsWith("mailto:") || l.href.startsWith("/")
                                     ? {}
                                     : {
                                           target: "_blank",

@@ -15,6 +15,8 @@ export type Project = {
     autopsy: string[];
     next: string[];
     links?: { label: string; href: string }[];
+    /** A diagram shown in the dialog as a teaser for the longer write-up it links to. */
+    feature?: { heading: string; text: string; diagram: "sleep-timeline"; href: string; linkLabel: string };
 };
 
 export const PROJECTS: Project[] = [
@@ -53,6 +55,13 @@ export const PROJECTS: Project[] = [
             { label: "The Terraform", href: "https://github.com/EliothK/krahler/tree/main/terraform" },
             { label: "Full build log", href: "/build" },
         ],
+        feature: {
+            heading: "Why the database never slept",
+            text: "The database should pause after an hour with no connections. It never did: the uptime check woke the API about three times an hour, and every startup connected to the database. Fixing it took two rounds.",
+            diagram: "sleep-timeline",
+            href: "/build#sleep-heading",
+            linkLabel: "Read the full story",
+        },
     },
     {
         id: "solarcast",

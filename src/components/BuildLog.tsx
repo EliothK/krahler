@@ -148,6 +148,13 @@ export default function BuildLog() {
     };
   }, []);
 
+  // A link like /build#sleep-heading (from the pipeline project's pop-up) should land on that section.
+  // The prerendered page already does this on its own; this covers the case where the page was rendered in the browser instead, after the browser had already looked for the anchor.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
+
   return (
     <div className="container-xl py-4 py-lg-5">
       <main id="main">
@@ -218,7 +225,7 @@ export default function BuildLog() {
           </p>
           <Entries items={API_CHAPTER} />
 
-          <h3 className="mt-4">Why the database never slept</h3>
+          <h3 id="sleep-heading" className="mt-4">Why the database never slept</h3>
           <Entries items={SLEEP_STORY} />
           <SleepTimeline />
         </section>
