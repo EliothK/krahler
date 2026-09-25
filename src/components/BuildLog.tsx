@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import ApiStatusPanel from "./ApiStatusPanel";
 import ArchitectureDiagram from "./ArchitectureDiagram";
+import PipelineFlow from "./PipelineFlow";
+import SleepTimeline from "./SleepTimeline";
 
 const REPO = "https://github.com/EliothK/krahler";
 
@@ -25,9 +27,16 @@ const API_CHAPTER: { title: string; body: string }[] = [
     title: "A security review found two live bugs, not theoretical ones",
     body: 'The contact form\'s "name" field flowed unvalidated into the notification email\'s Subject header, an email header injection gap, fixed with a line-break check. Separately, the rate limiter read the first (client-controlled) entry of X-Forwarded-For as the real client IP; Azure Container Apps appends the real IP rather than replacing the header, so a caller could defeat the 5-per-hour limit outright by sending a different fake value every request. Confirmed against Microsoft\'s own ingress docs before fixing it, since the intuitive assumption turned out to be backwards.',
   },
+];
+
+const SLEEP_STORY: { title: string; body: string }[] = [
   {
     title: "A scheduled job quietly defeated the database's own auto-pause",
     body: "A background retry job queried the database every 15 minutes to catch failed sends. The API is scale-to-zero, and the site's own uptime check pings it about that often, cold-starting a fresh replica each time; Spring's scheduler fires almost immediately on startup with no initial delay, so nearly every cold start touched the database and reset its 60-minute auto-pause timer before it could ever complete. The database ran, and billed, continuously instead of mostly-paused, caught only by reading a cost export. Fixed by retrying at the top of a real contact submission instead of on a timer, which is also the only time the database legitimately needs to be awake.",
+  },
+  {
+    title: "...and that was only half of it",
+    body: "The next two cost exports still showed about $7.50 a day, and Azure said the database had never paused once. The API's logs showed about three cold starts an hour, each opening a database connection: startup itself connected, because Flyway ran its migration check and Hibernate validated the schema on every boot. Removing the scheduled job had removed one caller without asking what else connects at startup. Now nothing touches the database until a contact message arrives, and a test counts connections to prove startup and the uptime check open none. It failed on the old code before it passed on the new one. The database paused about an hour after the fix went live, for the first time since it was created.",
   },
 ];
 
@@ -139,6 +148,13 @@ export default function BuildLog() {
     };
   }, []);
 
+  // A link like /build#sleep-heading (from the pipeline project's pop-up) should land on that section.
+  // The prerendered page already does this on its own; this covers the case where the page was rendered in the browser instead, after the browser had already looked for the anchor.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
+
   return (
     <div className="container-xl py-4 py-lg-5">
       <main id="main">
@@ -188,6 +204,13 @@ export default function BuildLog() {
             OIDC rather than a stored credential.
           </p>
           <ArchitectureDiagram />
+
+          <h3 className="mt-4">How a change gets there</h3>
+          <p className="section-intro mb-0">
+            Orange steps are gates: nothing moves past them until they pass,
+            or until I approve.
+          </p>
+          <PipelineFlow />
         </section>
 
         <ApiStatusPanel />
@@ -201,6 +224,10 @@ export default function BuildLog() {
             incidents that came with both. None of this was staged.
           </p>
           <Entries items={API_CHAPTER} />
+
+          <h3 id="sleep-heading" className="mt-4">Why the database never slept</h3>
+          <Entries items={SLEEP_STORY} />
+          <SleepTimeline />
         </section>
 
         <section className="band" aria-labelledby="moved-heading">

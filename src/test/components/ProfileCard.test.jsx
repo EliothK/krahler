@@ -23,6 +23,16 @@ describe("ProfileCard", () => {
         expect(hrefs).toContain("/build");
     });
 
+    it("opens the build log in the same tab and other sites in a new one", () => {
+        render(<ProfileCard />);
+        const build = screen.getByRole("link", { name: /how this site is built and run/i });
+        expect(build).toHaveAttribute("href", "/build");
+        expect(build).not.toHaveAttribute("target");
+        const github = screen.getAllByRole("link").find((l) => l.getAttribute("href")?.startsWith("https://github.com/"));
+        expect(github).toHaveAttribute("target", "_blank");
+        expect(github).toHaveAttribute("rel", "noopener noreferrer");
+    });
+
     it("renders the profile photo with alt text", () => {
         render(<ProfileCard />);
         expect(screen.getByAltText("Elioth Krahler")).toBeInTheDocument();

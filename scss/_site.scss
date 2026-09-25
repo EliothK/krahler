@@ -311,6 +311,7 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
     border-radius: 0 6px 6px 0;
 }
 .autopsy { border-left: 2px solid var(--flux); background: rgba(143, 164, 255, 0.06); h4 { color: var(--flux); } }
+.dialog-body .feature .tl-figure { margin: 0.75rem 0; }
 .next    { border-left: 2px solid var(--solar); background: rgba(245, 172, 66, 0.06); h4 { color: var(--solar); } }
 .dialog-body .next + section { border-top: none; padding-top: 0; }
 @media (max-width: 575.98px) {
@@ -379,6 +380,47 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
 .arch-sublabel { fill: var(--ink-quiet); font-family: var(--font-body); font-size: 11px; }
 .arch-edge { stroke: var(--ink-quiet); stroke-width: 1.5; fill: none; }
 .arch-arrowhead { fill: var(--ink-quiet); }
+
+// Sleep timeline (SleepTimeline.tsx). Scrolls sideways on narrow screens rather than shrinking its labels below readable size.
+.tl-figure { margin: 1.5rem 0; }
+.tl-scroll { overflow-x: auto; }
+.tl { display: block; width: 100%; min-width: 560px; max-width: 720px; height: auto; }
+.tl-row-label { fill: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.tl-lane { fill: var(--ink-quiet); font-family: var(--font-body); font-size: 11px; }
+.tl-note { fill: var(--ink-quiet); font-family: var(--font-body); font-size: 12px; font-style: italic; }
+.tl-start { stroke: var(--ink-quiet); stroke-width: 2; }
+.tl-connection { fill: var(--solar); }
+.tl-online { fill: var(--solar); opacity: 0.35; }
+.tl-paused { fill: var(--flux); opacity: 0.35; }
+.tl-span { stroke: var(--flux); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.tl-axis { stroke: var(--rule); stroke-width: 1; }
+
+// Pipeline flow (PipelineFlow.tsx): lanes stack, steps wrap left to right with an arrow between them; on a phone each lane becomes a vertical list.
+.flow { margin: 1.5rem 0; display: grid; gap: 1.25rem; }
+.flow-heading { font-size: 0.95rem; color: var(--ink-quiet); margin: 0 0 0.5rem; line-height: 1.4; }
+.flow-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; }
+.flow-step {
+    position: relative;
+    flex: 0 1 11rem;
+    background: var(--night-raised);
+    border: 1px solid var(--rule); border-left: 3px solid var(--flux); border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    display: flex; flex-direction: column; gap: 0.15rem;
+}
+.flow-step.flow-gate { border-left-color: var(--solar); }
+.flow-step + .flow-step::before {
+    content: "\2192";
+    position: absolute; left: -1.35rem; top: 50%; transform: translateY(-50%);
+    color: var(--ink-quiet);
+}
+.flow-title { font-weight: 600; font-size: 0.95rem; }
+.flow-detail { color: var(--ink-quiet); font-size: 0.82rem; line-height: 1.4; }
+@include media-breakpoint-down(sm) {
+    .flow-steps { flex-direction: column; gap: 1.6rem; }
+    .flow-step { flex-basis: auto; }
+    // Centered in the gap above the box, clear of its border.
+    .flow-step + .flow-step::before { content: "\2193"; left: 1rem; top: -1.45rem; transform: none; line-height: 1; }
+}
 
 // Hover effects only where there's a real pointer that can hover.
 // On touch screens a tap would otherwise leave them stuck on.

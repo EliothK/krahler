@@ -35,4 +35,48 @@ describe("BuildLog", () => {
             screen.getByRole("heading", { name: /what's running right now/i }),
         ).toBeInTheDocument();
     });
+
+    it("scrolls to the section named in the URL fragment", () => {
+        const scrolled = vi.fn();
+        const original = Element.prototype.scrollIntoView;
+        Element.prototype.scrollIntoView = scrolled;
+        window.history.replaceState(null, "", "/build#sleep-heading");
+        try {
+            render(<BuildLog />);
+            expect(scrolled).toHaveBeenCalledTimes(1);
+            expect(scrolled.mock.contexts[0].id).toBe("sleep-heading");
+        } finally {
+            Element.prototype.scrollIntoView = original;
+            window.history.replaceState(null, "", "/");
+        }
+    });
+
+    it("doesn't scroll without a fragment, or for one that matches nothing", () => {
+        const scrolled = vi.fn();
+        const original = Element.prototype.scrollIntoView;
+        Element.prototype.scrollIntoView = scrolled;
+        try {
+            window.history.replaceState(null, "", "/build");
+            render(<BuildLog />);
+            window.history.replaceState(null, "", "/build#no-such-section");
+            render(<BuildLog />);
+            expect(scrolled).not.toHaveBeenCalled();
+        } finally {
+            Element.prototype.scrollIntoView = original;
+            window.history.replaceState(null, "", "/");
+        }
+    });
+
+    it("includes the pipeline flow and the database sleep story", () => {
+        render(<BuildLog />);
+        expect(
+            screen.getByRole("heading", { name: /how a change gets there/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /why the database never slept/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /only half of it/i }),
+        ).toBeInTheDocument();
+    });
 });

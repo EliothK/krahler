@@ -60,6 +60,37 @@ describe("ProjectDialog", () => {
         expect(screen.queryByText("Read the code")).not.toBeInTheDocument();
     });
 
+    it("opens links to this site in place and other sites in a new tab", () => {
+        const withInternal = { ...project, links: [...project.links, { label: "Build log", href: "/build" }] };
+        render(<ProjectDialog project={withInternal} onClose={() => {}} />);
+        expect(screen.getByRole("link", { name: "Build log" })).not.toHaveAttribute("target");
+        expect(screen.getByRole("link", { name: "Repo" })).toHaveAttribute("target", "_blank");
+    });
+
+    it("shows no feature section when the project has none", () => {
+        const { container } = render(<ProjectDialog project={project} onClose={() => {}} />);
+        expect(container.ownerDocument.querySelector(".feature")).toBeNull();
+        expect(container.ownerDocument.querySelector(".tl")).toBeNull();
+    });
+
+    it("shows a feature's heading, text, diagram and link", () => {
+        const featured = {
+            ...project,
+            feature: {
+                heading: "Feature heading",
+                text: "Feature text",
+                diagram: "sleep-timeline",
+                href: "/build#sleep-heading",
+                linkLabel: "Read more",
+            },
+        };
+        render(<ProjectDialog project={featured} onClose={() => {}} />);
+        expect(screen.getByRole("heading", { level: 4, name: "Feature heading" })).toBeInTheDocument();
+        expect(screen.getByText("Feature text")).toBeInTheDocument();
+        expect(document.querySelector(".feature svg.tl")).not.toBeNull();
+        expect(screen.getByRole("link", { name: "Read more" })).toHaveAttribute("href", "/build#sleep-heading");
+    });
+
     it("calls onClose when the close button is clicked", () => {
         const onClose = vi.fn();
         render(<ProjectDialog project={project} onClose={onClose} />);
