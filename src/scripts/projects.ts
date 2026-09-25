@@ -55,24 +55,24 @@ export const PROJECTS: Project[] = [
     {
         id: "solarcast",
         title: "SolarCast",
-        stack: "Python · TensorFlow · XGBoost · Prophet · Optuna · on-prem Linux + NVIDIA GPU",
+        stack: "Python · XGBoost · TensorFlow · Optuna · Keras Tuner · pytest in CI · on-prem Linux + NVIDIA GPU",
         summary:
-            "Solar irradiance forecasts from six hours to forty-eight weeks ahead, trained on ten years of NSRDB data on my own hardware.",
-        figure: "88–93 W/m²",
+            "Solar irradiance forecasts 6 to 48 hours ahead that correct a live weather forecast against satellite measurements, and beat that forecast at every horizon.",
+        figure: "58–59 W/m²",
         figureAccent: "solar",
-        figureLabel: "test-set RMSE, 6h and 12h ahead (XGBoost), against a 99 W/m² target - 10% of peak irradiance",
+        figureLabel: "test RMSE of the XGBoost + LSTM ensemble, 6h to 48h ahead, against 60–78 W/m² for the Open-Meteo forecast alone",
         program: [
-            "Forecast Global Horizontal Irradiance (GHI) for a generation site. No single model covers six hours to forty-eight weeks - same-day dispatch and seasonal planning are different problems wearing the same label - so the horizons are split and each gets the model that handles it best.",
-            "Ten years (2015-2024) of hourly NREL NSRDB data feed a six-notebook pipeline: acquisition, preprocessing with cyclical time features and gap interpolation, modeling, test-set evaluation, five-fold time-series cross-validation, and hyperparameter tuning (Optuna for XGBoost, Keras Tuner for the LSTM, grid search for Prophet). Hourly LSTM, XGBoost and Prophet models cover 6h and 12h ahead; daily XGBoost covers 7 and 14 days; daily Prophet covers 4 to 48 weeks. run_pipeline.py takes a latitude and longitude, so a new site is one command and no change to model code. predict_today.py pulls live weather from Open-Meteo and returns a forecast from any model or the mean of all three. Training runs locally on a Linux machine with an NVIDIA GPU, with no cloud services beyond the two public data feeds. This is a portfolio project, not a production deployment.",
+            "Forecast Global Horizontal Irradiance (GHI) for a generation site. The first version learned only from 24 hours of NSRDB satellite history, which isn't available in real time, so the live script had to feed it Open-Meteo data it was never trained on. The rebuild uses the same kind of input in training and live: Open-Meteo's historical-forecast and previous-runs archives, with NSRDB used only as the truth to learn against.",
+            "The models predict the clear-sky index (GHI divided by clear-sky GHI) from the last 24 hours of weather, the forecast around the target hour, and the exact sun position, which removes the daily and seasonal cycle they would otherwise spend their capacity on. XGBoost and an LSTM are combined per horizon, weighted by inverse validation error. Splits are time-ordered with a 48-hour gap at each boundary, and the 24h and 48h models are scored on forecasts really issued one and two days earlier. The notebooks became a tested Python package: run_pipeline.py downloads, tunes (Optuna and Keras Tuner), trains and evaluates a site from a latitude and longitude; predict_today.py forecasts live and refuses to run models trained for a different site. The pytest suite runs offline in GitHub Actions. This is a portfolio project, not a production deployment.",
         ],
         autopsy: [
-            "On the held-out test set, XGBoost reaches 88.1 W/m² RMSE at 6h and 93.4 at 12h (R² 0.87 and 0.86); the LSTM is close behind at 90.7 and 98.0. Prophet is far worse at short range (about 155 W/m², R² near 0.6), which is why it isn't used there.",
-            "The target is 10% of peak irradiance (about 990 W/m² in this data). Cross-validation is less flattering than the test set. XGBoost's fold RMSE averages about 94 W/m² at 6h and about 100 at 12h, so the 12h model sits right on the 99 W/m² target rather than safely under it. The 88–93 band is the test-set number, not the whole story.",
-            "The long end is much weaker. Daily forecasts from 7 days to 48 weeks hold at R² of roughly 0.64-0.69 with RMSE of 1,300-1,450 Wh/m² per day, and the error barely improves or degrades across horizons. That is close to the limit of what the model can say about weather it can't see, and the single headline RMSE hides it.",
+            "On held-out 2024 data at Bismarck, ND, the ensemble scores 59.1, 59.4, 58.0 and 59.2 W/m² RMSE at 6, 12, 24 and 48 hours (R² 0.92 to 0.94). The Open-Meteo forecast alone scores 77.9, 77.9, 60.5 and 68.7. The old model, run the way the old live script actually ran it, scored 98 to 103 at 6h and 12h.",
+            "The gain is not even. At 6h and 12h the ensemble cuts the forecast's error by about 24%; at 24h it is only 4%, close to noise. The 24h and 48h rows cover August to December 2024 only, and the 6h and 12h rows use the newest forecast run for each hour, so live error will be somewhat higher.",
+            "The long range got an honest baseline and lost to it. Daily models from 7 days to 48 weeks do no better than a day-of-year climatology average (both around 1,320-1,380 Wh/m² per day RMSE). The first version reported those models without that comparison. Prophet was dropped from the short range, where it scored 75% worse than XGBoost.",
         ],
         next: [
-            "There's no automated retraining and no drift detection. Models are retrained by hand, which is fine at one site and won't hold at ten. I'd add a scheduled retrain with a hold-out check and monitor prediction error in production the same way I now monitor this site's deployment.",
-            "The combined forecast is a plain mean of the three models, not a learned weighting, and Prophet is clearly the weakest at short range, so an unweighted mean probably drags it down. Learning per-horizon weights is the first experiment I'd run.",
+            "There's still no automated retraining and no drift detection. I'd add a scheduled retrain with a hold-out check and log live forecasts against later NSRDB data, which would also measure the real live error the archive can only estimate.",
+            "The long-range models should either beat climatology or be replaced by it. And every number here comes from one site; the pipeline takes any latitude and longitude, but I haven't yet shown the gain holds at a second one.",
         ],
         links: [
             { label: "Source", href: "https://github.com/EliothK/SolarCast" },
@@ -81,25 +81,25 @@ export const PROJECTS: Project[] = [
     {
         id: "neutro",
         title: "NeutroSurrogate",
-        stack: "Python · PyTorch · SciPy · finite volume · pytest in CI",
+        stack: "Python · PyTorch · SciPy · Optuna · finite volume · pytest in CI",
         summary:
-            "A physics-informed neural surrogate for one-group neutron diffusion in a multi-zone slab reactor, built on a solver I verified against analytic theory before training anything.",
-        figure: "510 pcm",
+            "A neural surrogate for one-group neutron diffusion in a multi-zone slab reactor, with a physics step that turns its flux into k-eff accurate to a few pcm without calling the solver.",
+        figure: "1.5–2.3 pcm",
         figureAccent: "flux",
-        figureLabel: "median k-eff error on 300,000 held-out samples (95th percentile 1,646 pcm)",
+        figureLabel: "k-eff RMSE on the test split with the Rayleigh-Ritz re-fit (M = 17), no solver calls, about 25x faster than the solver in batches",
         program: [
-            "Reactor design sweeps need the effective multiplication factor (k-eff) and the flux profile thousands of times over, and the eigenvalue solve is the bottleneck. A bare uniform slab has a closed-form solution, so a surrogate for it would only be learning an algebraic formula. The geometry has to be multi-zone for the problem to be real: 50 zones over 200 cells, each with its own diffusion coefficient, absorption and fission production, plus the slab width - a 151-dimensional input.",
-            "I wrote the finite-volume solver from scratch and cross-checked it two ways before training anything on it: the uniform case matches analytic bare-slab theory to under 1 pcm and converges at second order, and ARPACK agrees with an independent power-iteration solver. A surrogate fitted to a buggy solver learns the bug perfectly. Samples come from a Latin hypercube design, and each is rescaled using the exact linear scaling of the fission term so its eigenvalue lands on a target k drawn from 0.90 to 1.10 - uniform coverage near criticality instead of samples wasted far from it. A tested guard stops the design from collapsing back into a solvable bare slab.",
-            "The surrogate is a SiLU MLP that outputs k-eff and the whole flux profile from a shared trunk. It can be trained on data alone or with the diffusion-equation residual added to the loss, and it is benchmarked against ridge regression and gradient-boosted trees as well as the solver.",
+            "Reactor design sweeps need the effective multiplication factor (k-eff) and the flux profile thousands of times over, and the eigenvalue solve is the bottleneck. A bare uniform slab has a closed-form solution, so the geometry is multi-zone: 16 zones over 192 cells, each with its own diffusion coefficient, absorption and fission production, plus the slab width, a 49-dimensional input. Properties are drawn at five knots and interpolated, because fully independent zones made the eigenvalue nearly unlearnable.",
+            "I wrote the finite-volume solver from scratch and cross-checked it before training anything on it: the uniform case matches analytic bare-slab theory to under 1 pcm and converges at second order, and ARPACK agrees with an independent power-iteration solver. A surrogate fitted to a buggy solver learns the bug perfectly. Two datasets come from a Latin hypercube design: one rescales fission so each eigenvalue lands on a target k from 0.90 to 1.10, the other keeps samples as drawn with k from 0.5 to 1.5.",
+            "An MLP outputs k-eff and the flux profile, optionally with the diffusion-equation residual in the loss, tuned by cross-validated Optuna search that only accepts a config if it beats the defaults by more than seed noise. The key step comes after the network. The operator is symmetric, so k computed from the predicted flux by a Rayleigh quotient has an error quadratic in the flux error. A cheap Rayleigh-Ritz step then re-fits the flux amplitude between zones, which is exactly what the network gets wrong in near-degenerate cores.",
         ],
         autopsy: [
-            "Trained on 3 million solved samples for 500 epochs. On 300,000 held-out samples the data-only surrogate has a median k-eff error of 510 pcm (about 0.5%), 1,646 pcm at the 95th percentile, and 16,291 pcm at the worst case. Median flux error is 8.6% relative L2, 38% at the 95th percentile. Ridge regression and gradient-boosted trees land near 4,000 pcm, so the network is roughly eight times more accurate on k-eff, and trees can't produce a flux profile at all.",
-            "Against the solver on the same GPU host: 0.88 ms per ARPACK solve, 0.08 ms for one surrogate call (11x), and 0.00026 ms per sample at a batch size of 1,000 (about 3,400x). The batched figure is the one that matters for design sweeps, and it only holds when you have thousands of evaluations to batch. Single-call speedup is a modest 11x.",
-            "The physics-informed loss did not win on accuracy. It cut the diffusion-equation residual by about ten times (0.78 to 0.076) but median k-eff error was slightly worse, 525 vs 510 pcm, and flux error about the same. Residual-consistent is not the same as more accurate, and the tails are still large: 500 pcm median is not good enough to replace the solver where criticality margins are tight.",
+            "The network's own k-eff head reaches about 170-180 pcm RMSE on the rescaled test split and about 510 on the wider natural one. The Rayleigh quotient roughly halves that. With the Ritz re-fit at 17 hat functions, one per zone boundary plus one, k-eff RMSE drops to 1.5-2.3 pcm (rescaled) and 4.6-7.5 pcm (natural) with no solver calls, at 25-28x the solver's speed in batches of 3,000. With 33 hat functions it reaches 0.3-0.7 pcm at 7-8x.",
+            "Out of distribution the re-fit holds up: 24-40 pcm RMSE, where the plain network is at 3,900-6,000 pcm. An earlier fallback gate, sending samples with a large residual to the solver, sent about 18% of out-of-distribution samples there; the re-fit beats it on accuracy and speed. Started from a flat flux instead of the network's, the same pipeline gives about 270 pcm, so the network is doing real work.",
+            "Things that didn't pay off: the physics-informed loss cut the residual by about ten times without improving k-eff, and a zone head with a blended flux loss helped on one dataset and hurt on the other. For a single sample the hybrid is no faster than the solver; the speedup only exists in batches.",
         ],
         next: [
             "The limitations are the interesting part. One-group diffusion is not transport, one dimension is not three, and there is no thermal feedback and no burnup.",
-            "The biggest practical gap is the error tails: a 510 pcm median is usable for screening, not for tight criticality margins, so I'd look at where the worst cases sit in parameter space and sample more densely there. After that, the first limitation I'd close is training data from OpenMC instead of my own solver, so the surrogate is accelerating a real code rather than my approximation of one.",
+            "The first one I'd close is training data from OpenMC instead of my own solver, so the surrogate is accelerating a real code rather than my approximation of one. In more dimensions the Ritz step's small eigenproblems grow, so its cost there is the open question.",
         ],
         links: [
             { label: "Source", href: "https://github.com/EliothK/neutro-surrogate" },
