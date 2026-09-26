@@ -1,0 +1,13 @@
+# Applied with `kubectl apply -k lab/k8s/` (lab-deploy.yml).
+# `kubectl apply -f` on the directory went alphabetically, so deployment.yaml ran before namespace.yaml and a first deploy to a fresh cluster failed.
+# Kustomize orders by kind instead: Namespaces first, then everything that lives in them.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - gateway-namespace.yaml
+  - networkpolicy.yaml
+  - service.yaml
+  - deployment.yaml
+  - gateway.yaml
+  - httproute.yaml

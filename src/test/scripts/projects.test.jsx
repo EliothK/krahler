@@ -30,6 +30,23 @@ describe("project write-ups", () => {
         expect(text).not.toMatch(/typical (size of a )?miss/i);
     });
 
+    it("the pipeline card shows a measured cost, not a pending note", () => {
+        const pipeline = byId("pipeline");
+        expect(pipeline.figure).toMatch(/\$/);
+        expect(allText("pipeline")).not.toMatch(/pending|once the cutover is done/i);
+    });
+
+    // A 250x jump from the old median to the new figure invites the question; the label has to say they measure different things.
+    it("NeutroSurrogate's headline says it includes the correction and gives the network-alone error", () => {
+        const label = byId("neutro").figureLabel;
+        expect(label).toMatch(/physics correction/);
+        expect(label).toMatch(/network alone/);
+    });
+
+    it("NeutroSurrogate explains its speed-up against other surrogates", () => {
+        expect(allText("neutro")).toMatch(/1,000 times/);
+    });
+
     it("NeutroSurrogate reports the model combination result", () => {
         expect(allText("neutro")).toMatch(/largest k-eff/i);
     });

@@ -103,7 +103,8 @@ jobs:
                     --overwrite-existing
 
             - name: Apply manifests
-              run: kubectl apply -f lab/k8s/
+              # -k, not -f: kustomize applies the Namespaces before what lives in them (see lab/k8s/kustomization.yaml).
+              run: kubectl apply -k lab/k8s/
 
             - name: Set the image to this build's digest
               run: |
