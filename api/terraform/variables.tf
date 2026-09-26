@@ -27,6 +27,12 @@ variable "allowed_origins" {
   default     = "https://krahler.com,https://www.krahler.com"
 }
 
+variable "alert_email" {
+  description = "Email address for the API resource group's cost alert (budget.tf)."
+  type        = string
+  sensitive   = true # plans are posted to public PRs and logs; keep the address out of them
+}
+
 variable "sql_entra_admin_login" {
   description = "Display name of the Entra user who administers Azure SQL (creates the API's database user)."
   type        = string

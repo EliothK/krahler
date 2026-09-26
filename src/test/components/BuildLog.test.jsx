@@ -82,6 +82,8 @@ describe("BuildLog", () => {
         const section = screen.getByRole("heading", { name: /INC-002/ }).closest("section");
         const fields = [...section.querySelectorAll("dt")].map((dt) => dt.textContent);
         expect(fields).toEqual(["Detected", "Impact", "Cause", "Resolved", "Prevention"]);
+        // The lesson it drew (catch it on day one, not by hand) is now in place, so the write-up says so.
+        expect(section.textContent).toMatch(/\$2 monthly budget/);
     });
 
     it("reports current numbers as well as the AKS-era ones, with no placeholders left", () => {
