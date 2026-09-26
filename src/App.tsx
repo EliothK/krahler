@@ -38,9 +38,9 @@ export default function App() {
                                     forecasting, reactor physics, then
                                     Kubernetes, Terraform and a Java API to
                                     build this site. Each one is shipped and
-                                    written up, including what broke. That same
-                                    curiosity is why I'll eventually get my PhD
-                                    in physics.
+                                    written up, including what broke. Physics is
+                                    where I learned to check a model against a
+                                    known answer before trusting it.
                                 </p>
                             </header>
                             {/** <ForecastHero /> */}

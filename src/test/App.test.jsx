@@ -20,6 +20,14 @@ describe('App', () => {
         expect(screen.getAllByRole('heading', {level:1})).toHaveLength(1);
     });
 
+    // For industry roles the physics background is pitched as a working habit (validating a model against a known answer), not a plan to leave for a PhD.
+    it('frames physics as a habit, not a departure', () => {
+        const { container } = render(<App />);
+        const sub = container.querySelector('.lede-sub');
+        expect(sub).toHaveTextContent('check a model against a known answer');
+        expect(sub.textContent).not.toMatch(/PhD/);
+    });
+
     it('includes the contact section', () => {
         render(<App />);
         expect(
