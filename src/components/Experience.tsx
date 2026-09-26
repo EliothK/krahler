@@ -6,13 +6,13 @@ export default function Experience() {
             </h2>
 
             <div className="entry">
-                <h3>Resource Revolution — Refresh Technician</h3>
+                <h3>Resource Revolution: Refresh Technician</h3>
                 <p className="when">2021-2022</p>
                 <p>
                     Led the Refresh team through a hardware refresh cycle. Wrote
                     PowerShell to automate the refresh process, replacing a
-                    manual per-machine procedure — infrastructure automation,
-                    not a listed duty. Backed up the IT department during
+                    manual per-machine procedure (infrastructure automation,
+                    not a listed duty). Backed up the IT department during
                     staffing shortages, covering user support.
                 </p>
             </div>

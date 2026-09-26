@@ -75,7 +75,7 @@ export async function fetchLiveActivity(limit = DEFAULT_LIMIT, token?: string): 
 }
 
 // Used in the browser: the API proxies GitHub with a server-side token (see ActivityController), so every visitor no longer shares GitHub's unauthenticated 60/hour limit.
-// It's on the same scale-to-zero Container App as the rest of the API, so a cold instance can take up to about a minute — a long timeout here just means the snapshot stays on screen a little longer, not a broken page.
+// It's on the same scale-to-zero Container App as the rest of the API, so a cold instance can take up to about a minute; a long timeout here just means the snapshot stays on screen a little longer, not a broken page.
 export async function fetchProxiedActivity(): Promise<Activity | null> {
     try {
         const res = await fetch(`${API_BASE}/api/activity`, {

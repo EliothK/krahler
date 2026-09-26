@@ -12,7 +12,7 @@ describe("Experience", () => {
     it("renders both entries", () => {
         render(<Experience />);
         expect(
-            screen.getByText(/Resource Revolution — Refresh Technician/),
+            screen.getByText(/Resource Revolution: Refresh Technician/),
         ).toBeInTheDocument();
         expect(screen.getByText("DoorDash")).toBeInTheDocument();
     });
