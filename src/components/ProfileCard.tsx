@@ -23,6 +23,11 @@ const LINKS = [
         hint: "Work history and background",
     },
     {
+        href: "/Elioth-Krahler-Resume.pdf",
+        label: "Résumé (PDF)",
+        hint: "Two pages, ML engineering to DevOps",
+    },
+    {
         href: `mailto:${CONTACT_EMAIL}`,
         label: `Email me @ ${CONTACT_EMAIL}`,
         hint: "Fastest way to reach me",
