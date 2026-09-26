@@ -5,4 +5,4 @@ metadata:
     labels:
         kubernetes.io/metadata.name: gateway-system
     # No pod-security.kubernetes.io/enforce label: AKS App Routing's managed Istio gateway pods don't set seccompProfile, so they can't run under "restricted".
-    # The actual application workload stays isolated in the portfolio namespace, which keeps its own "restricted" enforcement — this namespace exists only to host Azure's own infra pods.
+    # The actual application workload stays isolated in the portfolio namespace, which keeps its own "restricted" enforcement; this namespace exists only to host Azure's own infra pods.

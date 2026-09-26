@@ -80,10 +80,10 @@ class ContactController {
 
     // Deliberately NOT @Scheduled.
     // The API is scale-to-zero, and the site's own uptime check pings it roughly every 15 minutes, which is often enough to cold-start a fresh replica but not often enough to keep one alive continuously (Container Apps' default 300s idle cooldown is shorter than the gap between pings).
-    // Spring's fixedRate has no initial delay, so a scheduled version of this ran on nearly every single cold start regardless of the interval configured — and since it queried the database every time, Azure SQL's 60-minute auto-pause could never
-    // accumulate 60 idle minutes and the database ran (and billed) continuously, 24/7, instead of mostly-paused.
+    // Spring's fixedRate has no initial delay, so a scheduled version of this ran on nearly every single cold start regardless of the interval configured.
+    // Since it queried the database every time, Azure SQL's 60-minute auto-pause could never accumulate 60 idle minutes and the database ran (and billed) continuously, 24/7, instead of mostly-paused.
     // Measured cost from this: roughly $3.90/day in vCore charges alone.
-    // Tying the// retry to real contact-form submissions instead means the database is only woken by an actual visitor, which is exactly when it needs to be awake anyway to store their message.
+    // Tying the retry to real contact-form submissions instead means the database is only woken by an actual visitor, which is exactly when it needs to be awake anyway to store their message.
     void retryUnemailed() {
         List<ContactMessage> pending = messages.findByEmailedFalse();
         for (var msg : pending) {
@@ -102,7 +102,7 @@ class ContactController {
         mail.setTo(notifyTo);
         mail.setReplyTo(msg.getSenderEmail());
         mail.setSubject("Site contact: " + msg.getSenderName());
-        mail.setText(msg.getMessage() + "\n\n— " + msg.getSenderName() + " <" + msg.getSenderEmail() + ">");
+        mail.setText(msg.getMessage() + "\n\nFrom: " + msg.getSenderName() + " <" + msg.getSenderEmail() + ">");
         mailSender.send(mail);
     }
 

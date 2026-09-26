@@ -32,7 +32,7 @@ resource "azurerm_mssql_database" "api" {
   tags                        = var.tags
 }
 
-# The Container App has no fixed outbound IP on the Consumption plan, so the alternative to this is a private endpoint + VNET integration — real infrastructure for a portfolio's contact form.
+# The Container App has no fixed outbound IP on the Consumption plan, so the alternative to this is a private endpoint + VNET integration: real infrastructure for a portfolio's contact form.
 # "Allow Azure services" (the 0.0.0.0/0.0.0.0 special case) plus a strong generated password is the trade-off made instead.
 resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
   name             = "allow-azure-services"

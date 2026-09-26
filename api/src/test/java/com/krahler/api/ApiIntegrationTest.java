@@ -160,6 +160,7 @@ class ApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(mail.getTo()).contains("eliothkrahler@gmail.com");
         org.assertj.core.api.Assertions.assertThat(mail.getReplyTo()).isEqualTo("ada@example.com");
         org.assertj.core.api.Assertions.assertThat(mail.getText()).contains("Hello there");
+        org.assertj.core.api.Assertions.assertThat(mail.getText()).endsWith("\n\nFrom: Ada <ada@example.com>");
     }
 
     @Test

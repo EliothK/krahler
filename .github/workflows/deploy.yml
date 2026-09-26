@@ -113,7 +113,7 @@ jobs:
                     -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
                     -backend-config="key=${{ matrix.key }}"
 
-            - name: terraform init (no backend, PR checks — no secrets available)
+            - name: terraform init (no backend, PR checks, no secrets available)
               if: github.event_name != 'push'
               run: terraform init -backend=false
 
