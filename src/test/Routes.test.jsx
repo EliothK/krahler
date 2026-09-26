@@ -24,7 +24,16 @@ describe("Routes", () => {
         expect(heading()).toHaveTextContent("Build log");
     });
 
-    it.each(["/404", "/no-such-page", "/build/extra", "/builds", "/BUILD"])(
+    it.each([
+        ["/projects/pipeline", "This site's delivery pipeline"],
+        ["/projects/solarcast", "SolarCast"],
+        ["/projects/neutrosurrogate/", "NeutroSurrogate"],
+    ])("renders the project page for %j", (path, title) => {
+        render(<Routes path={path} />);
+        expect(heading()).toHaveTextContent(title);
+    });
+
+    it.each(["/404", "/no-such-page", "/build/extra", "/builds", "/BUILD", "/projects", "/projects/neutro", "/projects/solarcast/extra"])(
         "renders the not-found page for %j",
         (path) => {
             render(<Routes path={path} />);

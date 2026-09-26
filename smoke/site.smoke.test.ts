@@ -81,6 +81,19 @@ describe(`smoke: ${BASE}`, () => {
             expect(html).toContain("Why it moved off AKS");
         });
 
+        it.each([
+            ["/projects/pipeline", "This site's delivery pipeline"],
+            ["/projects/solarcast", "SolarCast"],
+            ["/projects/neutrosurrogate", "NeutroSurrogate"],
+        ])("prerenders %s as its own page", async (path, title) => {
+            const res = await get(path);
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toContain(`<title>${title} - Elioth Krahler</title>`);
+            expect(html).toContain(`<link rel="canonical" href="https://krahler.com${path}"`);
+            expect(html).toContain("Autopsy");
+        });
+
         it("serves the résumé as a PDF, not the 404 page", async () => {
             const res = await get("/Elioth-Krahler-Resume.pdf");
             expect(res.status).toBe(200);

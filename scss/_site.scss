@@ -295,7 +295,8 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
 .dialog-head h3 { font-size: 1.375rem; line-height: 1.25; }
 .dialog-stack { font-size: 0.875rem; line-height: 1.5; margin: 0.4rem 0 0; }
 .dialog-body { padding: 1.5rem; }
-.dialog-body h4 {
+// The project pages use h2 for the same labels, since they sit under the page's h1 instead of the pop-up's h3.
+.dialog-body h4, .dialog-body h2 {
     font-family: var(--font-data); font-size: 0.78rem; line-height: 1.4;
     text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--ink-quiet); margin: 0 0 0.6rem;
@@ -310,10 +311,15 @@ dialog.proj-dialog::backdrop { background: rgba(8, 8, 12, 0.8); }
     padding: 1rem 1.25rem;
     border-radius: 0 6px 6px 0;
 }
-.autopsy { border-left: 2px solid var(--flux); background: rgba(143, 164, 255, 0.06); h4 { color: var(--flux); } }
+.autopsy { border-left: 2px solid var(--flux); background: rgba(143, 164, 255, 0.06); h4, h2 { color: var(--flux); } }
 .dialog-body .feature .tl-figure { margin: 0.75rem 0; }
-.next    { border-left: 2px solid var(--solar); background: rgba(245, 172, 66, 0.06); h4 { color: var(--solar); } }
+.next    { border-left: 2px solid var(--solar); background: rgba(245, 172, 66, 0.06); h4, h2 { color: var(--solar); } }
 .dialog-body .next + section { border-top: none; padding-top: 0; }
+.dialog-body .dialog-permalink { margin-top: 1.5rem; font-size: 0.875rem; }
+// A project's own page: the write-up without the pop-up's panel around it.
+.project-page .dialog-body { padding: 0; max-width: 46rem; font-size: 1.05rem; line-height: 1.65; }
+.project-page .project-figure { margin: 1rem 0 0; }
+.project-page .project-figure .figure { display: inline; }
 @media (max-width: 575.98px) {
     .dialog-head { padding: 1rem 1.25rem; }
     .dialog-body { padding: 1.25rem; }
