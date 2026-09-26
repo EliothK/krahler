@@ -89,6 +89,22 @@ describe(`smoke: ${BASE}`, () => {
             },
         );
 
+        // An unknown path used to get the home page with a 200, so a typo or a stale link looked like a real page to crawlers.
+        it("returns a real 404 page for a path that isn't a page", async () => {
+            const res = await get("/no-such-page");
+            expect(res.status).toBe(404);
+            const html = await res.text();
+            expect(html).toContain("Page not found");
+            expect(html).toContain('<meta name="robots" content="noindex"');
+            expect(html).not.toContain('<link rel="canonical"');
+        });
+
+        it("still serves the build log with a trailing slash", async () => {
+            const res = await get("/build/");
+            expect(res.status).toBe(200);
+            expect(await res.text()).toContain("<title>Build log - Elioth Krahler</title>");
+        });
+
         it("returns 404 for a missing asset instead of the app shell", async () => {
             const res = await get("/assets/does-not-exist.js");
             expect(res.status).toBe(404);

@@ -31,7 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = {
         "api.contact-rate-limit.max-requests=3",
-        "api.contact-rate-limit.window=1h"
+        "api.contact-rate-limit.window=1h",
+        "api.deploy-check-token=test-deploy-token"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -51,6 +52,9 @@ class ApiIntegrationTest {
 
     @Autowired
     LazySchemaMigrator schema;
+
+    @Autowired
+    org.springframework.core.env.Environment environment;
 
     // Several tests read the repository before their first submission, and the schema now only appears on first use.
     @BeforeEach
@@ -315,6 +319,32 @@ class ApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void deployCheckReachesTheRealDatabaseWithTheToken() throws Exception {
+        mvc.perform(post("/api/deploy-check").header("X-Deploy-Check-Token", "test-deploy-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.database").value("ok"));
+    }
+
+    @Test
+    void deployCheckIsInvisibleWithoutTheToken() throws Exception {
+        mvc.perform(post("/api/deploy-check")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/deploy-check").header("X-Deploy-Check-Token", "guess"))
+                .andExpect(status().isNotFound());
+    }
+
+    // JavaMail's default is to wait forever; a hung Gmail connection must not hang the visitor's request.
+    @Test
+    void mailHasConnectReadAndWriteTimeouts() {
+        for (String key : List.of("connectiontimeout", "timeout", "writetimeout")) {
+            assertThat(environment.getProperty("spring.mail.properties.mail.smtp." + key, Integer.class))
+                    .as(key)
+                    .isNotNull()
+                    .isPositive()
+                    .isLessThanOrEqualTo(10_000);
+        }
     }
 
     @Test

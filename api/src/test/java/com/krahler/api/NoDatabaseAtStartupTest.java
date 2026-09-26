@@ -79,6 +79,8 @@ class NoDatabaseAtStartupTest {
         mvc.perform(get("/api/status")).andExpect(status().isOk());
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
         mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
+        // Without the deploy workflow's token, the deploy check must not wake the database either.
+        mvc.perform(post("/api/deploy-check").header("X-Deploy-Check-Token", "guess")).andExpect(status().isNotFound());
         assertThat(connections.get()).as("connections opened by status and health checks").isZero();
 
         mvc.perform(post("/api/contact")

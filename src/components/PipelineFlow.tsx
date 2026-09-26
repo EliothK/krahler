@@ -6,7 +6,7 @@ const LANES: { heading: string; steps: Step[] }[] = [
     {
         heading: "Every pull request",
         steps: [
-            { title: "CI", detail: "audit, lint, 74 unit tests, build" },
+            { title: "CI", detail: "audit, lint, unit tests, build" },
             { title: "API tests", detail: "JUnit against H2, when api/ changes" },
             { title: "Terraform plan", detail: "read-only identity, posted as a PR comment" },
             { title: "Staging", detail: "the tested build, deployed to a preview environment" },
