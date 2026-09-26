@@ -20,6 +20,13 @@ updates:
   - package-ecosystem: docker
     directory: /api
     schedule: { interval: weekly }
+    ignore:
+      # The Java version lives in four places that must move together: pom.xml (java.version), both Dockerfile stages, and setup-java in api.yml.
+      # Dependabot bumped only the build stage once (#33: JDK 26 compiling for a Java 25 runtime), so Java upgrades are made by hand, all at once.
+      # The maven tag (3-eclipse-temurin-25) already floats to the newest Maven 3 on every build, so nothing is lost by ignoring it.
+      - dependency-name: "library/maven"
+      - dependency-name: "library/eclipse-temurin"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /lab # the AKS lab image
     schedule: { interval: weekly }
