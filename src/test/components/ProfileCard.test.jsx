@@ -33,6 +33,14 @@ describe("ProfileCard", () => {
         expect(github).toHaveAttribute("rel", "noopener noreferrer");
     });
 
+    it("links the résumé PDF", () => {
+        render(<ProfileCard />);
+        expect(screen.getByRole("link", { name: /résumé \(pdf\)/i })).toHaveAttribute(
+            "href",
+            "/Elioth-Krahler-Resume.pdf",
+        );
+    });
+
     it("renders the profile photo with alt text", () => {
         render(<ProfileCard />);
         expect(screen.getByAltText("Elioth Krahler")).toBeInTheDocument();

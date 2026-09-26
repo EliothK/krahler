@@ -81,6 +81,12 @@ describe(`smoke: ${BASE}`, () => {
             expect(html).toContain("Why it moved off AKS");
         });
 
+        it("serves the résumé as a PDF, not the 404 page", async () => {
+            const res = await get("/Elioth-Krahler-Resume.pdf");
+            expect(res.status).toBe(200);
+            expect(res.headers.get("content-type")).toContain("application/pdf");
+        });
+
         it.each(["/robots.txt", "/sitemap.xml", "/favicon.svg", "/og.png"])(
             "serves %s",
             async (path) => {
