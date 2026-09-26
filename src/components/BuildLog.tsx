@@ -429,9 +429,11 @@ export default function BuildLog() {
           <h3>What I&apos;d change</h3>
           <ul>
             <li>
-              It was found by hand, days late. A daily cost alert on the API&apos;s
-              resource group, with a threshold of a few cents, would have caught
-              it on the first day; Azure budgets can alert on a resource group.
+              It was found by hand, days late. Now a $2 monthly budget on the
+              API&apos;s resource group, in Terraform, emails me at $1 of actual
+              spend (about three months of normal use), so a day like that
+              trips it the day it happens; a second alert fires if the
+              month&apos;s forecast goes over.
             </li>
             <li>
               The first fix removed the one cause I&apos;d found and stopped
