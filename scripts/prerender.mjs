@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const dist = "dist";
-const { render } = await import(pathToFileURL(join("dist-ssr", "entry-server.js")).href);
+const { render, projectRoutes } = await import(pathToFileURL(join("dist-ssr", "entry-server.js")).href);
 const template = await readFile(join(dist, "index.html"), "utf8");
 
 const routes = [
@@ -16,6 +16,7 @@ const routes = [
         description: "How this site is built, deployed and tested, and why it moved off AKS.",
         canonical: "https://krahler.com/build",
     },
+    ...projectRoutes,
     // Served by Static Web Apps, with a 404 status, for any path that isn't a page (responseOverrides in staticwebapp.config.json).
     // Any path Routes doesn't know renders the not-found page; "/404" is just a name for it here.
     {

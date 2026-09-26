@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { Project } from "../scripts/projects";
-import SleepTimeline from "./SleepTimeline";
+import { projectPath, type Project } from "../scripts/projects";
+import ProjectWriteup from "./ProjectWriteup";
 
 type Props = { project: Project | null; onClose: () => void };
 
@@ -42,53 +42,10 @@ function ProjectDialog({ project, onClose }: Props) {
           </button>
         </div>
         <div className="dialog-body">
-          <section>
-            <h4>The program</h4>
-            {project.program.map((t, i) => (
-              <p key={i}>{t}</p>
-            ))}
-          </section>
-          {project.feature ? (
-            <section className="feature">
-              <h4>{project.feature.heading}</h4>
-              <p>{project.feature.text}</p>
-              {project.feature.diagram === "sleep-timeline" && <SleepTimeline />}
-              <p>
-                <a href={project.feature.href}>{project.feature.linkLabel}</a>
-              </p>
-            </section>
-          ) : null}
-          <section className="autopsy">
-            <h4>Autopsy</h4>
-            {project.autopsy.map((t, i) => (
-              <p key={i}>{t}</p>
-            ))}
-          </section>
-          <section className="next">
-            <h4>If I keep going</h4>
-            {project.next.map((t, i) => (
-              <p key={i}>{t}</p>
-            ))}
-          </section>
-          {project.links?.length ? (
-            <section>
-              <h4>Read the code</h4>
-              <p className="dialog-links">
-                {project.links.map((l) => (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    // Pages on this site open in place, like the profile card's links.
-                    {...(l.href.startsWith("/")
-                      ? {}
-                      : { target: "_blank", rel: "noopener noreferrer" })}
-                  >
-                    {l.label}
-                  </a>
-                ))}
-              </p>
-            </section>
-          ) : null}
+          <ProjectWriteup project={project} headingLevel={4} />
+          <p className="dialog-permalink">
+            <a href={projectPath(project)}>Open this write-up as its own page</a>
+          </p>
         </div>
       </div>
     </dialog>

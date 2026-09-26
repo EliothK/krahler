@@ -20,5 +20,5 @@ COPY --chown=101:101 lab/security.conf  /etc/nginx/snippets/security.conf
 EXPOSE 8080
 
 LABEL org.opencontainers.image.source="https://github.com/EliothK/krahler"
-LABEL org.opencontainers.image.description="krahler.com — static site on nginx"
+LABEL org.opencontainers.image.description="krahler.com: static site on nginx"
 LABEL org.opencontainers.image.licenses="MIT"

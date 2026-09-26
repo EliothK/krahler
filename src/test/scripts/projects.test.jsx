@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import Skills from "../../components/Skills";
-import { PROJECTS } from "../../scripts/projects";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { PROJECTS, projectPath } from "../../scripts/projects";
 
 const byId = (id) => {
     const project = PROJECTS.find((p) => p.id === id);
@@ -38,17 +40,32 @@ describe("project write-ups", () => {
 
     // A 250x jump from the old median to the new figure invites the question; the label has to say they measure different things.
     it("NeutroSurrogate's headline says it includes the correction and gives the network-alone error", () => {
-        const label = byId("neutro").figureLabel;
+        const label = byId("neutrosurrogate").figureLabel;
         expect(label).toMatch(/physics correction/);
         expect(label).toMatch(/network alone/);
     });
 
     it("NeutroSurrogate explains its speed-up against other surrogates", () => {
-        expect(allText("neutro")).toMatch(/1,000 times/);
+        expect(allText("neutrosurrogate")).toMatch(/1,000 times/);
     });
 
     it("NeutroSurrogate reports the model combination result", () => {
-        expect(allText("neutro")).toMatch(/largest k-eff/i);
+        expect(allText("neutrosurrogate")).toMatch(/largest k-eff/i);
+    });
+
+    // The id is the URL (/projects/<id>), so it has to be URL-safe and unique, and changing one breaks links already shared.
+    it("gives every project a unique, URL-safe path", () => {
+        const paths = PROJECTS.map(projectPath);
+        expect(new Set(paths).size).toBe(PROJECTS.length);
+        for (const path of paths) expect(path).toMatch(/^\/projects\/[a-z0-9-]+$/);
+        expect(paths).toEqual(["/projects/pipeline", "/projects/solarcast", "/projects/neutrosurrogate"]);
+    });
+
+    it("lists every project page in the sitemap", () => {
+        const sitemap = readFileSync(resolve(__dirname, "../../../public/sitemap.xml"), "utf8");
+        for (const path of PROJECTS.map(projectPath)) {
+            expect(sitemap).toContain(`<loc>https://krahler.com${path}</loc>`);
+        }
     });
 
     // A tool a project leans on should also be in the Skills section, or the two pages disagree.

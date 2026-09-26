@@ -47,7 +47,7 @@ src/test/              unit tests, mirrored to src/
 smoke/                 live-site checks (smoke test, browser check, Lighthouse gate)
 scss/                  styles; the crow palette tokens are at the top of _site.scss
 public/                static files: staticwebapp.config.json (headers, caching, the 404 page), the share image and the résumé PDF
-scripts/               prerender.mjs (SSR at build time: /, /build and 404.html), activity-snapshot.mjs (build-time GitHub fetch)
+scripts/               prerender.mjs (SSR at build time: /, /build, one page per project at /projects/<id>, and 404.html), activity-snapshot.mjs (build-time GitHub fetch)
 terraform/             site infra: Static Web App, domains, deploy role, budget (state: site.tfstate)
 api/                   the Spring Boot API: src/, its Dockerfile, and api/terraform/ (Container App, Azure SQL, cost alert; state: api.tfstate)
 lab/                   the AKS lab: terraform/, k8s/ (applied with kubectl apply -k), Dockerfile, nginx config. See lab/README.md
@@ -96,7 +96,7 @@ The [build log](https://krahler.com/build) tells the story behind all of this, i
 
 ## Roadmap
 
-The API, database, staging environment, Terraform pipeline and the before-and-after cost are done; the build log's INC-002 covers the one real incident so far. Next is giving each project write-up its own prerendered URL, so a single write-up can be linked on its own.
+The API, database, staging environment, Terraform pipeline and the before-and-after cost are done; the build log's INC-002 covers the one real incident so far. Each project write-up also has its own prerendered page (for example [krahler.com/projects/solarcast](https://krahler.com/projects/solarcast)), so a single write-up can be linked on its own.
 
 ## License
 

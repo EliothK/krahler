@@ -1,4 +1,5 @@
 export type Project = {
+    /** Also the project's URL: /projects/<id>. Changing it breaks links people have shared. */
     id: string;
     title: string;
     stack: string;
@@ -18,6 +19,12 @@ export type Project = {
     /** A diagram shown in the dialog as a teaser for the longer write-up it links to. */
     feature?: { heading: string; text: string; diagram: "sleep-timeline"; href: string; linkLabel: string };
 };
+
+export const PROJECTS_PATH = "/projects";
+
+export const projectPath = (p: Project) => `${PROJECTS_PATH}/${p.id}`;
+
+export const projectPageTitle = (p: Project) => `${p.title} - Elioth Krahler`;
 
 export const PROJECTS: Project[] = [
     {
@@ -90,7 +97,7 @@ export const PROJECTS: Project[] = [
         ],
     },
     {
-        id: "neutro",
+        id: "neutrosurrogate",
         title: "NeutroSurrogate",
         stack: "Python · PyTorch · SciPy · Optuna · finite volume · pytest in CI",
         summary:

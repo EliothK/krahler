@@ -91,6 +91,13 @@ describe("ProjectDialog", () => {
         expect(screen.getByRole("link", { name: "Read more" })).toHaveAttribute("href", "/build#sleep-heading");
     });
 
+    it("links to the project's own page", () => {
+        render(<ProjectDialog project={project} onClose={() => {}} />);
+        const link = screen.getByRole("link", { name: /as its own page/i });
+        expect(link).toHaveAttribute("href", "/projects/test-proj");
+        expect(link).not.toHaveAttribute("target");
+    });
+
     it("calls onClose when the close button is clicked", () => {
         const onClose = vi.fn();
         render(<ProjectDialog project={project} onClose={onClose} />);

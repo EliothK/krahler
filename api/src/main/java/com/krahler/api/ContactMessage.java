@@ -32,7 +32,7 @@ class ContactMessage {
     @Column(nullable = false, length = 2000)
     private String message;
 
-    // Hibernate's default mapping for Instant is an offset-aware type (SQL Server: datetimeoffset), which the migration's plain DATETIME2 column doesn't match — invisible on H2, which is permissive about it, and only surfaced against real Azure SQL.
+    // Hibernate's default mapping for Instant is an offset-aware type (SQL Server: datetimeoffset), which the migration's plain DATETIME2 column doesn't match; it's invisible on H2, which is permissive about it, and only surfaced against real Azure SQL.
     // Pinning it here makes the Java side match the column regardless of dialect.
     @Column(name = "created_at", nullable = false)
     @JdbcTypeCode(SqlTypes.TIMESTAMP)

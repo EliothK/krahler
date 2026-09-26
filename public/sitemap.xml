@@ -2,4 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://krahler.com/</loc></url>
   <url><loc>https://krahler.com/build</loc></url>
+  <url><loc>https://krahler.com/projects/pipeline</loc></url>
+  <url><loc>https://krahler.com/projects/solarcast</loc></url>
+  <url><loc>https://krahler.com/projects/neutrosurrogate</loc></url>
 </urlset>
