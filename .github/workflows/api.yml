@@ -96,15 +96,17 @@ jobs:
 
             # The Gmail app password the contact form emails through.
             # Set as a Container App secret rather than a plain env var so it never appears in `az containerapp show` output, and refreshed every deploy so rotating it in GitHub takes effect on the next merge without a manual Azure step.
-            - name: Set the mail and GitHub activity secrets
+            # The deploy check token only lets this workflow ask the API to prove it can reach the database (see the last step).
+            - name: Set the mail, GitHub activity and deploy check secrets
               env:
                   MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
                   MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
                   GITHUB_ACTIVITY_TOKEN: ${{ secrets.GH_ACTIVITY_TOKEN }}
+                  DEPLOY_CHECK_TOKEN: ${{ secrets.DEPLOY_CHECK_TOKEN }}
               run: |
                   az containerapp secret set \
                     --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
-                    --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD" "github-activity-token=$GITHUB_ACTIVITY_TOKEN"
+                    --secrets "mail-username=$MAIL_USERNAME" "mail-password=$MAIL_PASSWORD" "github-activity-token=$GITHUB_ACTIVITY_TOKEN" "deploy-check-token=$DEPLOY_CHECK_TOKEN"
 
             # A new revision starts alongside the old one, and traffic moves once it passes its readiness probe.
             #
@@ -126,6 +128,7 @@ jobs:
                       "DB_NAME=$DB_NAME" \
                       "DB_AUTHENTICATION=ActiveDirectoryManagedIdentity" \
                       "GITHUB_ACTIVITY_TOKEN=secretref:github-activity-token" \
+                      "DEPLOY_CHECK_TOKEN=secretref:deploy-check-token" \
                     --remove-env-vars DB_USERNAME DB_PASSWORD
 
             # /api/status reports the version it was started with, so this fails if the old revision is still serving.
@@ -141,8 +144,23 @@ jobs:
                   echo "the API never reported ${{ github.sha }}" >&2
                   exit 1
 
+            # A version that answers /api/status has NOT necessarily reached the database: nothing connects at startup, so Azure SQL can auto-pause while the uptime check keeps cold-starting the API.
+            # This asks the new version to run the migration and a query, so a broken database login fails the deploy rather than a visitor's message.
+            # It wakes the database once per deploy; the first request can take a while if the database was paused.
+            - name: Check the new version can reach the database
+              env:
+                  DEPLOY_CHECK_TOKEN: ${{ secrets.DEPLOY_CHECK_TOKEN }}
+              run: |
+                  for i in $(seq 1 6); do
+                    code=$(curl -s -m 90 -o /dev/null -w '%{http_code}' -X POST -H "X-Deploy-Check-Token: $DEPLOY_CHECK_TOKEN" "$API_URL/api/deploy-check")
+                    echo "attempt $i: HTTP $code"
+                    [ "$code" = 200 ] && exit 0
+                    sleep 15
+                  done
+                  echo "the new version could not reach the database" >&2
+                  exit 1
+
             # Left over from password sign-in. Only removed once the new version, which doesn't reference it, is serving; a no-op on later runs.
-            # (A version that answers has also signed in to the database: Flyway and schema validation run at startup, so a bad database login fails the step above.)
             - name: Remove the old database password secret
               run: |
                   if az containerapp secret list --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --query "[?name=='db-password'] | length(@)" -o tsv | grep -qx 1; then
