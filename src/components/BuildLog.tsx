@@ -40,6 +40,27 @@ const SLEEP_STORY: { title: string; body: string }[] = [
   },
 ];
 
+// Measured from real GitHub Actions runs (the last eight successful runs of each workflow, late September 2026) and the live site.
+const CURRENT_NUMBERS: [string, string][] = [
+  ["Pull request checks, including staging", "1.5 to 2.5 min"],
+  ["Merge to live site, including post-deploy checks", "2.5 to 4 min"],
+  ["Upload to Static Web Apps", "~40 s"],
+  ["Post-deploy smoke, browser and Lighthouse checks", "~1 min"],
+  ["API: tests, image, rollout, database check", "3.5 to 5.5 min"],
+  ["Terraform plan, both roots", "~40 s"],
+  ["API cold start (first request after scaling to zero)", "~50 s, of which the app's own startup is ~7 s; warm: 0.08 s"],
+  ["Lighthouse, mobile / desktop performance", "0.88 to 0.90 / 0.98 to 0.99"],
+  ["Lighthouse accessibility, best practices, SEO", "1.00"],
+];
+
+const INC002: [string, string][] = [
+  ["Detected", "Reading the Azure cost export by hand: $7.74 of database compute on 2026-09-22, the day it was created. No alert, error or failed check fired."],
+  ["Impact", "The database never auto-paused and billed around the clock: $18.59 over about two days, on course for roughly $300 a month."],
+  ["Cause", "Two things kept connecting: a scheduled retry job, then (after that was fixed) every API startup running Flyway and Hibernate's schema check. The uptime check cold-starts the API about three times an hour, so the database never reached 60 idle minutes."],
+  ["Resolved", "2026-09-24 01:28 UTC: the database paused for the first time, 63 minutes after the second fix went live. Next full day: no compute charge at all."],
+  ["Prevention", "A test counts database connections through startup, the status check and health checks and fails on any; it failed on the old code first. The deploy now proves the database login works once, with a token only the pipeline has."],
+];
+
 const NUMBERS: [string, string][] = [
   ["Dispatch to done", "~1m38s"],
   ["ci / terraform / deploy", "39s / 9s / 53s"],
@@ -74,7 +95,7 @@ const DECISIONS: { title: string; body: string }[] = [
 const BROKE: { title: string; body: string }[] = [
   {
     title: "Manifests never apply-tested",
-    body: "Four YAML mistakes: missing spaces after colons in flow mappings, hostname instead of hostnames, matchLabels beside namespaceSelector instead of inside it, and aks_istio_system instead of aks-istio-system. Also, kubectl apply -f on a directory goes alphabetical, so deployment.yaml runs before namespace.yaml. That one is still unfixed: it works only because the namespace already exists, and a first deploy to a fresh cluster would fail.",
+    body: "Four YAML mistakes: missing spaces after colons in flow mappings, hostname instead of hostnames, matchLabels beside namespaceSelector instead of inside it, and aks_istio_system instead of aks-istio-system. Also, kubectl apply -f on a directory goes alphabetical, so deployment.yaml ran before namespace.yaml: it only worked because the namespace already existed, and a first deploy to a fresh cluster would have failed. Fixed later with a kustomization.yaml (kubectl apply -k orders Namespaces first), and CI now checks that order on every change, since the lab is only deployed by hand and nothing else would notice.",
   },
   {
     title: "Dependabot never gets secrets",
@@ -189,6 +210,38 @@ export default function BuildLog() {
             .
           </p>
         </header>
+
+        <section className="glance" aria-labelledby="glance-heading">
+          <h2 id="glance-heading" className="visually-hidden">
+            At a glance
+          </h2>
+          <ul>
+            <li>
+              <strong>Runs on</strong> Azure: Static Web Apps for the page, a
+              Spring Boot API that scales to zero, and a serverless SQL database
+              it signs in to without a password. All of it is in Terraform.
+            </li>
+            <li>
+              <strong>Ships through</strong> required checks and a staging
+              deploy on every pull request, an approval gate on any
+              infrastructure change, and smoke, browser and Lighthouse checks
+              against the live site after every deploy.
+            </li>
+            <li>
+              <strong>Costs</strong> about $9 a month now, almost all of it the
+              Static Web Apps Standard plan, against roughly $90 a month when it
+              ran on Kubernetes.
+            </li>
+            <li>
+              <strong>Best story:</strong>{" "}
+              <a href="#inc2-heading">
+                the database that never paused
+              </a>
+              , a real incident found by reading the bill, fixed twice, and
+              closed with a test that failed on the old code.
+            </li>
+          </ul>
+        </section>
 
         <section className="band" aria-labelledby="arch-heading">
           <h2 id="arch-heading" className="mb-2">
@@ -307,7 +360,20 @@ export default function BuildLog() {
             Numbers
           </h2>
           <p className="section-intro mb-3">
-            AKS-era pipeline, from a workflow_dispatch run on 2026-09-17.
+            Now: measured from the last eight successful runs of each workflow
+            and from the live site.
+          </p>
+          <dl>
+            {CURRENT_NUMBERS.map(([k, v]) => (
+              <div className="entry" key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <h3 className="mt-4">On AKS</h3>
+          <p className="section-intro mb-3">
+            The first version, from a workflow_dispatch run on 2026-09-17.
           </p>
           <dl>
             {NUMBERS.map(([k, v]) => (
@@ -341,6 +407,39 @@ export default function BuildLog() {
             None of this was staged. Each fix made room to see the next problem.
           </p>
           <Entries items={INCIDENT} />
+        </section>
+
+        <section className="band" aria-labelledby="inc2-heading">
+          <h2 id="inc2-heading" className="mb-2">
+            INC-002: the database that never paused (real)
+          </h2>
+          <p className="section-intro mb-3">
+            A production incident on the current setup, found by reading a
+            bill rather than by any alert. The full story is in{" "}
+            <a href="#sleep-heading">why the database never slept</a>.
+          </p>
+          <dl>
+            {INC002.map(([k, v]) => (
+              <div className="entry" key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <h3>What I&apos;d change</h3>
+          <ul>
+            <li>
+              It was found by hand, days late. A daily cost alert on the API&apos;s
+              resource group, with a threshold of a few cents, would have caught
+              it on the first day; Azure budgets can alert on a resource group.
+            </li>
+            <li>
+              The first fix removed the one cause I&apos;d found and stopped
+              there. The test that finally closed it checks the property that
+              matters (nothing connects unless a message arrives), so the next
+              cause fails it too.
+            </li>
+          </ul>
         </section>
 
         <section className="band" aria-labelledby="inc-heading">

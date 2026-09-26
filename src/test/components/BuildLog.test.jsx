@@ -67,6 +67,40 @@ describe("BuildLog", () => {
         }
     });
 
+    it("opens with a four-line summary that links to the best story", () => {
+        const { container } = render(<BuildLog />);
+        const glance = container.querySelector(".glance");
+        expect(glance.querySelectorAll("li")).toHaveLength(4);
+        expect(glance.textContent).toMatch(/\$9 a month/);
+        const link = [...glance.querySelectorAll("a")].find((a) => a.getAttribute("href") === "#inc2-heading");
+        expect(link).toBeTruthy();
+        expect(container.querySelector("#inc2-heading")).not.toBeNull();
+    });
+
+    it("writes up the real incident with every postmortem field", () => {
+        render(<BuildLog />);
+        const section = screen.getByRole("heading", { name: /INC-002/ }).closest("section");
+        const fields = [...section.querySelectorAll("dt")].map((dt) => dt.textContent);
+        expect(fields).toEqual(["Detected", "Impact", "Cause", "Resolved", "Prevention"]);
+    });
+
+    it("reports current numbers as well as the AKS-era ones, with no placeholders left", () => {
+        render(<BuildLog />);
+        expect(screen.getByRole("heading", { name: "On AKS" })).toBeInTheDocument();
+        const section = screen.getByRole("heading", { name: "Numbers" }).closest("section");
+        const values = [...section.querySelectorAll("dd")].map((dd) => dd.textContent);
+        const coldStart = [...section.querySelectorAll("dt")].findIndex((dt) => /cold start/i.test(dt.textContent));
+        expect(coldStart).toBeGreaterThanOrEqual(0);
+        // Every current value is a measurement: it has a number in it, not a stand-in like COLD_START.
+        for (const v of values) expect(v).toMatch(/\d/);
+    });
+
+    it("no longer calls the lab's apply-order bug unfixed", () => {
+        const { container } = render(<BuildLog />);
+        expect(container.textContent).not.toMatch(/still unfixed/i);
+        expect(container.textContent).toMatch(/kustomization\.yaml/);
+    });
+
     it("includes the pipeline flow and the database sleep story", () => {
         render(<BuildLog />);
         expect(

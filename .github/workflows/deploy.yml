@@ -40,6 +40,16 @@ jobs:
                   node-version: "24"
                   cache: "npm"
 
+            # The lab is only deployed by hand, so nothing else would notice if its manifests stopped applying in a working order.
+            # A first deploy to a fresh cluster fails unless every Namespace is created before anything placed in it.
+            - name: Lab manifests apply Namespaces first
+              run: |
+                  kinds=$(kubectl kustomize lab/k8s | awk '/^kind:/ {print $2}')
+                  echo "$kinds" | tr '\n' ' '; echo
+                  last_ns=$(echo "$kinds" | grep -n '^Namespace$' | tail -1 | cut -d: -f1)
+                  first_other=$(echo "$kinds" | grep -vn '^Namespace$' | head -1 | cut -d: -f1)
+                  [ -n "$last_ns" ] && [ "$last_ns" -lt "$first_other" ]
+
             - run: npm ci
             - name: Audit production dependencies
               run: npm audit --omit=dev --audit-level=high
