@@ -42,7 +42,7 @@ jobs:
     plan:
         # Dependabot and fork PRs get no secrets, so they can't log in.
         if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 15
         permissions:
             id-token: write # OIDC
@@ -151,7 +151,7 @@ jobs:
     apply:
         needs: plan
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.plan.outputs.site != '' || needs.plan.outputs.api != '')
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 30
         # Requires the owner's approval, and only main can deploy to it. The plan to approve is in the `plan` job's summary.
         environment: infrastructure

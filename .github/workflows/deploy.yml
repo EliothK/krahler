@@ -30,7 +30,7 @@ env:
 
 jobs:
     ci:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.0
@@ -70,7 +70,7 @@ jobs:
     # The site and the AKS lab are separate Terraform roots with separate state, so each is checked on its own.
     terraform-validate:
         name: terraform-validate (${{ matrix.name }})
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 10
         strategy:
             fail-fast: false
@@ -123,7 +123,7 @@ jobs:
     terraform:
         needs: terraform-validate
         if: ${{ always() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 2
         steps:
             - name: All Terraform roots validated
@@ -137,7 +137,7 @@ jobs:
     staging:
         needs: [ci]
         if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 15
         environment:
             name: staging
@@ -213,7 +213,7 @@ jobs:
     deploy:
         needs: [ci, terraform]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 15
         environment: production
         permissions:
